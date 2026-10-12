@@ -1,0 +1,12 @@
+{
+    "id": "{2B6CCF83-B363-C87B-9C0B-D9846E03D78C}",
+    "name": "SonosUPnP",
+    "author": "Wilkware (@Pitti)",
+    "url": "https://wilkware.de",
+    "compatibility": {
+        "version": "8.1"
+    },
+    "version": "1.0",
+    "build": 20261012,
+    "date": 1791789010
+}

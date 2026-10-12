@@ -1,0 +1,16 @@
+{
+    "id": "{6565DA53-C205-D1B8-CC1D-460A62570A69}",
+    "name": "Sonos Configurator",
+    "url": "https://wilkware.de/module/sonos/",
+    "type": 4,
+    "vendor": "Sonos",
+    "aliases": [],
+    "parentRequirements": [
+        "{48975ECF-9DF0-5CD7-F937-CEFCAFA4A4B9}"
+    ],
+    "childRequirements": [],
+    "implemented": [
+        "{EFD75742-5FD6-CF66-26BF-CBBD4EF9365A}"
+    ],
+    "prefix": "WWXSU"
+}

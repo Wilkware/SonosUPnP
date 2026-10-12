@@ -1,0 +1,16 @@
+{
+    "id": "{FB07CB8D-A0BD-45B9-C334-02FFCCFD148C}",
+    "name": "Sonos Bridge",
+    "url": "https://wilkware.de/module/sonos/",
+    "type": 1,
+    "vendor": "Sonos",
+    "aliases": [],
+    "parentRequirements": [],
+    "childRequirements": [
+        "{EFD75742-5FD6-CF66-26BF-CBBD4EF9365A}"
+    ],
+    "implemented": [
+        "{48975ECF-9DF0-5CD7-F937-CEFCAFA4A4B9}"
+    ],
+    "prefix": "WWXSU"
+}

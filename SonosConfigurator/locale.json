@@ -1,0 +1,25 @@
+{
+    "translations": {
+        "de": {
+            "Sonos Configurator": "Sonos Konfigurator",
+            "Active": "Aktiv",
+            "Using this configurator, you can select from the list of currently found speaker and create an instance for a new speaker or check an existing instance.": "Mit diesem Konfigurator können Sie aus der Liste der derzeit gefundenen Lautsprecher auswählen und eine Instanz für einen neuen Lautsprecher erstellen oder eine bestehende Instanz überprüfen.",
+            "Sonos speakers:": "Sonos Lautsprecher:",
+            "IP": "IP",
+            "Name (Room)": "Name (Raum)",
+            "Room": "Raum",
+            "Model": "Modell",
+            "Generation": "Generation",
+            "Software Version": "Software-Version",
+            "Hardware Version": "Hardware-Version",
+            "Serial Number": "Seriennummer",
+            "MAC Address": "MAC-Adresse",
+            "Create instance": "Instanz erstellen",
+            "Check instance": "Instanz prüfen",
+            "No Sonos speakers found.": "Keine Sonos Lautsprecher gefunden.",
+            "No Sonos speakers found. Please check your network connection and try again.": "Keine Sonos Lautsprecher gefunden. Bitte überprüfen Sie Ihre Netzwerkverbindung und versuchen Sie es erneut.",
+            "🎗️ Source code, donation and licence ...": "🎗️ Quellcode, Spende und Lizenz ...",
+            "The software is free of charge for non-commercial use, I would appreciate a donation if you like the module.": "Die Software ist für die nicht kommerzielle Nutzung kostenlos, über eine Spende bei Gefallen des Moduls würde ich mich sehr freuen."
+        }
+    }
+}

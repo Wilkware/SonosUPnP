@@ -1,0 +1,16 @@
+{
+    "id": "{EC026937-3197-3501-6A3E-7F9D8B6A3D55}",
+    "name": "Sonos Speaker",
+    "url": "https://wilkware.de/module/sonos/",
+    "type": 3,
+    "vendor": "Sonos",
+    "aliases": [],
+    "parentRequirements": [
+        "{48975ECF-9DF0-5CD7-F937-CEFCAFA4A4B9}"
+    ],
+    "childRequirements": [],
+    "implemented": [
+        "{EFD75742-5FD6-CF66-26BF-CBBD4EF9365A}"
+    ],
+    "prefix": "WWXSU"
+}

@@ -1,0 +1,18 @@
+{
+    "translations": {
+        "de": {
+            "Sonos Bridge": "Sonos Bridge",
+            "This module is used for automatic network detection and central management of Sonos speakers.": "Das Modul dient zur automatischen Netzwerkerkennung und zentrale Verwaltung der Sonos-Lautsprecher.",
+            "📻 Global station list ...": "📻 Globale Senderliste ...",
+            "Default for all SonosSpeaker instances unless overridden there:": "Standard für alle SonosSpeaker-Instanzen, sofern dort nicht überschrieben:",
+            "Name": "Name",
+            "Stream URL": "Stream-URL",
+            "Icon URL (optional, used when the stream itself has no cover art)": "Icon-URL (optional, wird verwendet, wenn der Stream selbst kein Cover liefert)",
+            "Active": "Aktiv",
+            "❓ Query from ...": "❓ Abfrage von ...",
+            "Players": "Lautsprecher",
+            "🎗️ Source code, donation and licence ...": "🎗️ Quellcode, Spende und Lizenz ...",
+            "The software is free of charge for non-commercial use, I would appreciate a donation if you like the module.": "Die Software ist für die nicht kommerzielle Nutzung kostenlos, über eine Spende bei Gefallen des Moduls würde ich mich sehr freuen."
+        }
+    }
+}

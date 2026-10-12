@@ -1,0 +1,42 @@
+{
+    "translations": {
+        "de": {
+            "SonosSpeaker": "SonosSpeaker",
+            "Translation": "Übersetzung",
+            "This module controls a single Sonos speaker via the local UPnP interface.": "Das Modul steuert einen einzelnen Sonos-Lautsprecher über die lokale UPnP-Schnittstelle.",
+            "⏱️ Status update ...": "⏱️ Statusaktualisierung ...",
+            "📻 Station list ...": "📻 Senderliste ...",
+            "🧪 Test ...": "🧪 Test ...",
+            "Previous": "Zurück",
+            "Stop": "Stopp",
+            "Play": "Play",
+            "Pause": "Pause",
+            "Next": "Weiter",
+            "Mute on": "Stumm ein",
+            "Mute off": "Stumm aus",
+            "Update status": "Status abfragen",
+            "No active parent (Sonos Bridge).": "Keine aktive übergeordnete Instanz (Sonos Bridge).",
+            "IP address could not be resolved.": "IP-Adresse konnte nicht ermittelt werden.",
+            "Speaker not reachable (IP: %s).": "Lautsprecher nicht erreichbar (IP: %s).",
+            "🎗️ Source code, donation and licence ...": "🎗️ Quellcode, Spende und Lizenz ...",
+            "The software is free of charge for non-commercial use, I would appreciate a donation if you like the module.": "Die Software ist für die nicht kommerzielle Nutzung kostenlos, über eine Spende bei Gefallen des Moduls würde ich mich sehr freuen.",
+            "Sonos Speaker": "Sonos Lautsprecher",
+            "Update interval (seconds)": "Aktualisierungsintervall (Sekunden)",
+            "Station list override (leave empty to use the global list from SonosBridge)": "Eigene Senderliste (leer lassen, um die globale Liste der SonosBridge zu verwenden)",
+            "Name": "Name",
+            "Stream URL": "Stream-URL",
+            "Icon URL (optional)": "Icon-URL (optional)",
+            "Playback": "Wiedergabe",
+            "Volume": "Lautstärke",
+            "Mute": "Stumm",
+            "Artist": "Interpret",
+            "Title": "Titel",
+            "Album": "Album",
+            "Stations": "Sender",
+            "Cover": "Cover",
+            "Active": "Aktiv",
+            "No player selected": "Kein Lautsprecher ausgewählt",
+            "Speaker not reachable": "Lautsprecher nicht erreichbar"
+        }
+    }
+}
