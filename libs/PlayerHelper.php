@@ -146,13 +146,22 @@ trait PlayerHelper
             $album = $matchedStation['Name'] ?? $stationTitle;
         }
 
+        // An own station whose stream sends no "now playing" text: Sonos then reports
+        // the file name of the stream URL as title (e.g. "stream.mp3"), show the station name instead
+        $title = $trackInfo['title'];
+        if ($matchedStation !== null && $trackInfo['stationTitle'] === '') {
+            $title = $matchedStation['Name'];
+        }
+
         $this->SetValueString('Artist', $trackInfo['artist']);
-        $this->SetValueString('Title', $trackInfo['title']);
+        $this->SetValueString('Title', $title);
         $this->SetValueString('Album', $album);
 
-        $trackKey = $trackInfo['artist'] . '|' . $trackInfo['title'] . '|' . $album . '|' . $trackInfo['uri'];
-        $coverUrl = $trackInfo['coverUrl'] !== '' ? $trackInfo['coverUrl'] : ($matchedStation['IconURL'] ?? '');
-        $this->UpdateCover($coverUrl, $trackKey);
+        $trackKey = $trackInfo['artist'] . '|' . $title . '|' . $album . '|' . $trackInfo['uri'];
+        // The logo of an own station comes first: for a stream started via its URL Sonos still reports
+        // an album art URL on the speaker, which only delivers a generic image or none at all.
+        $coverUrls = array_values(array_filter([$matchedStation['IconURL'] ?? '', $trackInfo['coverUrl']], fn (string $url): bool => $url !== ''));
+        $this->UpdateCover($coverUrls, $trackKey);
     }
 
     /**
@@ -712,32 +721,28 @@ trait PlayerHelper
      * Sonos' "getaa" cover endpoint returns a static URL per speaker whose
      * image content changes per song - the URL itself never changes.
      *
-     * Falls back to the bundled placeholder image (imgs/noCover.png) if
-     * no cover URL is available at all, or the download fails.
+     * The URLs are tried in the given order, the first one delivering an
+     * image wins. Falls back to the bundled placeholder image
+     * (imgs/noCover.png) if no URL is available or none delivers an image.
      *
-     * @param string $coverUrl The URL of the cover image to download.
-     * @param string $trackKey An identifier of the currently playing track (artist|title|album|uri).
+     * @param array<int,string> $coverUrls Cover URLs in order of preference
+     * @param string            $trackKey  An identifier of the currently playing track (artist|title|album|uri).
      *
      * @return void
      */
-    private function UpdateCover(string $coverUrl, string $trackKey): void
+    private function UpdateCover(array $coverUrls, string $trackKey): void
     {
-        $this->LogDebug(__FUNCTION__, 'Update cover: ' . $coverUrl . ' (track key: ' . $trackKey . ')');
+        $this->LogDebug(__FUNCTION__, 'Update cover: ' . implode(', ', $coverUrls) . ' (track key: ' . $trackKey . ')');
         if ($trackKey === $this->ReadAttributeString('LastTrackKey')) {
             $this->LogDebug(__FUNCTION__, 'Track has not changed since last poll, skipping cover update.');
             return; // same track as last poll, nothing to do
         }
 
         $content = false;
-
-        if ($coverUrl !== '') {
-            $this->LogDebug(__FUNCTION__, 'Downloading cover: ' . $coverUrl);
-            // No 'ignore_errors': a 4xx/5xx response must return false instead of storing an error page as cover
-            $context = stream_context_create(['http' => ['timeout' => 4]]);
-            $content = @file_get_contents($coverUrl, false, $context);
-
-            if ($content === false) {
-                $this->LogDebug(__FUNCTION__, 'Failed to download cover: ' . $coverUrl);
+        foreach ($coverUrls as $coverUrl) {
+            $content = $this->DownloadCover($coverUrl);
+            if ($content !== false) {
+                break;
             }
         }
 
@@ -751,7 +756,7 @@ trait PlayerHelper
 
         $mediaID = @IPS_GetObjectIDByIdent('Cover', $this->InstanceID);
         if ($mediaID === false) {
-            $this->LogDebug(__FUNCTION__, 'Media object not found for cover: ' . $coverUrl);
+            $this->LogDebug(__FUNCTION__, 'Media object "Cover" not found.');
             return;
         }
 
@@ -759,6 +764,37 @@ trait PlayerHelper
         IPS_SendMediaEvent($mediaID);
 
         $this->WriteAttributeString('LastTrackKey', $trackKey);
+    }
+
+    /**
+     * Downloads a cover image.
+     *
+     * @param string $coverUrl URL of the image
+     *
+     * @return string|false Image data, or false if the download failed or delivered no image
+     */
+    private function DownloadCover(string $coverUrl): string|false
+    {
+        $this->LogDebug(__FUNCTION__, 'Downloading cover: ' . $coverUrl);
+        // Many logo hosts reject requests without a user agent (403).
+        // No 'ignore_errors': a 4xx/5xx response must return false instead of storing an error page as cover
+        $context = stream_context_create(['http' => [
+            'timeout'    => 4,
+            'user_agent' => 'Symcon SonosUPnP'
+        ]]);
+        $content = @file_get_contents($coverUrl, false, $context);
+        if ($content === false || $content === '') {
+            $this->LogDebug(__FUNCTION__, 'Failed to download cover: ' . $coverUrl);
+            return false;
+        }
+
+        // Formats the visualization cannot show (e.g. SVG) or HTML pages are skipped
+        if (@getimagesizefromstring($content) === false) {
+            $this->LogDebug(__FUNCTION__, 'Downloaded data is no supported image: ' . $coverUrl);
+            return false;
+        }
+
+        return $content;
     }
 
     // -------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 [![Home](https://img.shields.io/badge/Home-wilkware.de-0b1830.svg?style=flat-square)](https://wilkware.de/module/sonos/)
 [![Version](https://img.shields.io/badge/Symcon-PHP--Modul-red.svg?style=flat-square)](https://www.symcon.de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/)
 [![Product](https://img.shields.io/badge/Symcon%20Version-8.1-blue.svg?style=flat-square)](https://www.symcon.de/produkt/)
-[![Version](https://img.shields.io/badge/Modul%20Version-1.3.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
+[![Version](https://img.shields.io/badge/Modul%20Version-1.4.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg?style=flat-square)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Actions](https://img.shields.io/github/actions/workflow/status/wilkware/SonosUPnP/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Wilkware/SonosUPnP/actions)
 
@@ -61,9 +61,10 @@ Name                               | Beschreibung
 ---------------------------------- | -----------------------------------------------------------------
 Name                               | Anzeigename des Senders (erscheint in der Senderauswahl und als Album bei Radiostreams)
 Stream-URL                         | Direkte Adresse des Audio-Streams (z. B. MP3/AAC)
-Icon-URL                           | Optionales Senderlogo, wird als Cover verwendet, wenn der Stream selbst keins liefert
+Icon-URL                           | Optionales Senderlogo (PNG, JPG oder GIF; SVG wird nicht unterstützt), wird während der Wiedergabe des Senders als Cover angezeigt
 
-Änderungen an der Liste werden beim Übernehmen automatisch an alle Lautsprecher-Instanzen weitergegeben.
+Änderungen an der Liste werden beim Übernehmen automatisch an alle Lautsprecher-Instanzen weitergegeben.  
+_Tipp:_ Stream- und Logo-Adressen vieler Sender findet man unter [radio-browser.info](https://www.radio-browser.info).
 
 _Aktionsbereich:_
 
@@ -101,6 +102,10 @@ $ip = WWXSU_GetPlayerIP(12345, 'RINCON_000E58xxxxxx01400');
 ```
 
 ### 9. Versionshistorie
+
+v1.4.20261123
+
+* _NEU_: Dokumentation der Senderliste um unterstützte Logo-Formate und den Tipp radio-browser.info ergänzt
 
 v1.3.20261123
 
