@@ -272,7 +272,8 @@ trait PlayerHelper
     /**
      * Extracts the selected station index from a Playlist action value.
      * The visualization sends the complete playlist JSON with "current" set
-     * to the selected entry, scripts may pass the plain index.
+     * to the selected entry, scripts and actions may pass the plain index
+     * or the station name.
      *
      * @param mixed $value Value passed to RequestAction
      *
@@ -288,6 +289,13 @@ trait PlayerHelper
             $playlist = json_decode($value, true);
             if (is_array($playlist) && isset($playlist['current']) && is_numeric($playlist['current'])) {
                 return (int) $playlist['current'];
+            }
+
+            $stations = json_decode($this->ReadAttributeString('ActiveStations'), true);
+            foreach (is_array($stations) ? $stations : [] as $index => $station) {
+                if (strcasecmp(trim((string) ($station['Name'] ?? '')), trim($value)) === 0) {
+                    return (int) $index;
+                }
             }
         }
 

@@ -3,7 +3,7 @@
 [![Home](https://img.shields.io/badge/Home-wilkware.de-0b1830.svg?style=flat-square)](https://wilkware.de/module/sonos/)
 [![Version](https://img.shields.io/badge/Symcon-PHP--Modul-red.svg?style=flat-square)](https://www.symcon.de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/)
 [![Product](https://img.shields.io/badge/Symcon%20Version-8.1-blue.svg?style=flat-square)](https://www.symcon.de/produkt/)
-[![Version](https://img.shields.io/badge/Modul%20Version-1.5.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
+[![Version](https://img.shields.io/badge/Modul%20Version-1.6.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg?style=flat-square)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Actions](https://img.shields.io/github/actions/workflow/status/wilkware/SonosUPnP/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Wilkware/SonosUPnP/actions)
 
@@ -136,13 +136,21 @@ Die Steuerung erfolgt über `RequestAction` auf die jeweilige Statusvariable, z.
 ```php
 // Wiedergabe der Gruppe starten (0 = Zurück, 1 = Stopp, 2 = Play, 3 = Pause, 4 = Weiter)
 RequestAction(IPS_GetObjectIDByIdent('Playback', 12345), 2);
-// Ersten Sender der Senderliste in der Gruppe abspielen
+// Ersten Sender der Senderliste in der Gruppe abspielen (Zählung ab 0)
 RequestAction(IPS_GetObjectIDByIdent('Playlist', 12345), 0);
+// Sender über seinen Namen aus der Senderliste abspielen
+RequestAction(IPS_GetObjectIDByIdent('Playlist', 12345), 'NDR 2');
 // Gruppenlautstärke auf 20% setzen
 RequestAction(IPS_GetObjectIDByIdent('Volume', 12345), 20);
 ```
 
+Der Senderwechsel funktioniert genauso über die Aktion _Auf Wert schalten_ (z. B. in Ablaufplänen oder Ereignissen) mit der Variable _Sender_ und dem Sendernamen oder der Nummer als Wert.
+
 ### 9. Versionshistorie
+
+v1.6.20261123
+
+* _NEU_: Senderwahl auch über den Sendernamen (z. B. Aktion "Auf Wert schalten" oder RequestAction mit Namen)
 
 v1.5.20261123
 
