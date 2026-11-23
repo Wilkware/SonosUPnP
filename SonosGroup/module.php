@@ -18,7 +18,8 @@ use Wilkware\SonosUPnP\VariableHelper;
  * Represents the Sonos group the configured main speaker currently belongs to.
  * The group structure is read via ZoneGroupTopology, transport and station
  * commands are routed to the group coordinator and the track info/cover
- * is taken from the coordinator. Volume and mute stay per speaker.
+ * is taken from the coordinator. Volume and mute act on the whole group
+ * (GroupRenderingControl of the coordinator), like the group slider of the Sonos app.
  */
 class SonosGroup extends IPSModuleStrict
 {
@@ -92,7 +93,7 @@ class SonosGroup extends IPSModuleStrict
         // Kernel start: dataflow to the parent is only allowed once the kernel is ready
         $this->RegisterMessage(0, IPS_KERNELSTARTED);
 
-        // Create the instance variables (Playback, Artist, Title, Album, Playlist, Members)
+        // Create the instance variables (Playback, Members, Volume, Mute, Artist, Title, Album, Playlist)
         $this->CreateVariables();
     }
 
@@ -236,14 +237,23 @@ class SonosGroup extends IPSModuleStrict
                 $this->HandlePlaybackAction((int) $value);
                 break;
             case 'Playlist':
-                $this->RejoinMembers();
-                $this->HandlePlaylistAction((int) $value);
+                $index = $this->ParsePlaylistIndex($value);
+                if ($index !== null) {
+                    $this->RejoinMembers();
+                    $this->HandlePlaylistAction($index);
+                }
+                break;
+            case 'Volume':
+                $this->HandleGroupVolumeAction((int) $value);
+                break;
+            case 'Mute':
+                $this->HandleGroupMuteAction((bool) $value);
                 break;
             case 'Update':
                 // Value 1 = triggered manually from the configuration form (show result), 0 = timer
                 $error = $this->PollStatus();
                 if ((bool) $value) {
-                    $this->ShowStatusPopup($error, ['Members', 'Playback', 'Artist', 'Title', 'Album']);
+                    $this->ShowStatusPopup($error, ['Members', 'Playback', 'Artist', 'Title', 'Album', 'Volume', 'Mute']);
                 }
                 break;
             default:
@@ -333,7 +343,57 @@ class SonosGroup extends IPSModuleStrict
         $this->SetValueString('Members', $this->FormatMembers($group));
         $this->UpdateTrackVariables($trackInfo);
 
+        $volume = $this->GetGroupVolume($group['ip']);
+        $this->LogDebug(__FUNCTION__, 'GetGroupVolume() returned: ' . var_export($volume, true));
+        if ($volume !== false) {
+            $this->SetValueInteger('Volume', $volume);
+        }
+
+        $mute = $this->GetGroupMute($group['ip']);
+        $this->LogDebug(__FUNCTION__, 'GetGroupMute() returned: ' . var_export($mute, true));
+        if ($mute !== null) {
+            $this->SetValueBoolean('Mute', $mute);
+        }
+
         return '';
+    }
+
+    /**
+     * Sets the volume of the whole group, like the group slider of the Sonos app.
+     *
+     * @param int $volume Group volume (0-100)
+     *
+     * @return void
+     */
+    private function HandleGroupVolumeAction(int $volume): void
+    {
+        $ip = $this->ResolveTransportIp();
+        if ($ip === null) {
+            return;
+        }
+
+        if ($this->SetGroupVolume($ip, $volume)) {
+            $this->SetValueInteger('Volume', $volume);
+        }
+    }
+
+    /**
+     * Mutes or unmutes the whole group.
+     *
+     * @param bool $mute true to mute, false to unmute
+     *
+     * @return void
+     */
+    private function HandleGroupMuteAction(bool $mute): void
+    {
+        $ip = $this->ResolveTransportIp();
+        if ($ip === null) {
+            return;
+        }
+
+        if ($this->SetGroupMute($ip, $mute)) {
+            $this->SetValueBoolean('Mute', $mute);
+        }
     }
 
     /**
@@ -537,6 +597,12 @@ class SonosGroup extends IPSModuleStrict
         $this->EnableAction('Playback');
 
         $this->RegisterVariableString('Members', $this->Translate('Members'), '', 20);
+
+        $this->RegisterVariableInteger('Volume', $this->Translate('Volume'), '~Volume', 25);
+        $this->EnableAction('Volume');
+
+        $this->RegisterVariableBoolean('Mute', $this->Translate('Mute'), '~Mute', 30);
+        $this->EnableAction('Mute');
 
         $this->RegisterVariableString('Artist', $this->Translate('Artist'), '~Artist', 40);
         $this->RegisterVariableString('Title', $this->Translate('Title'), '~Song', 50);

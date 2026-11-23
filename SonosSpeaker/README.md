@@ -3,7 +3,7 @@
 [![Home](https://img.shields.io/badge/Home-wilkware.de-0b1830.svg?style=flat-square)](https://wilkware.de/module/sonos/)
 [![Version](https://img.shields.io/badge/Symcon-PHP--Modul-red.svg?style=flat-square)](https://www.symcon.de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/)
 [![Product](https://img.shields.io/badge/Symcon%20Version-8.1-blue.svg?style=flat-square)](https://www.symcon.de/produkt/)
-[![Version](https://img.shields.io/badge/Modul%20Version-1.2.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
+[![Version](https://img.shields.io/badge/Modul%20Version-1.3.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg?style=flat-square)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Actions](https://img.shields.io/github/actions/workflow/status/wilkware/SonosUPnP/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Wilkware/SonosUPnP/actions)
 
@@ -100,12 +100,12 @@ _Erreichbarkeit:_ Antwortet der Lautsprecher nicht (ausgeschaltet, neue IP-Adres
 
 ### 6. Darstellungen
 
-Es werden keine eigenen Darstellungen oder Profile angelegt, verwendet werden ausschließlich die Standardprofile von Symcon (`~PlaybackPreviousNext`, `~Intensity.100`, `~Switch`, `~Artist`, `~Song`, `~Playlist`).
+Es werden keine eigenen Darstellungen oder Profile angelegt, verwendet werden ausschließlich die Medienprofile von Symcon (`~PlaybackPreviousNext`, `~Volume`, `~Mute`, `~Artist`, `~Song`, `~Playlist`).
 
 ### 7. Visualisierung
 
 Alle Statusvariablen und das Cover können direkt in der Visualisierung (Kachel- und WebFront) verwendet werden.  
-Wiedergabe, Lautstärke, Stumm und Senderauswahl sind schaltbar.
+Wiedergabe, Lautstärke, Stumm und Senderauswahl sind schaltbar. Der aktuell laufende Sender ist in der Senderliste markiert.
 
 ### 8. Befehlsreferenz
 
@@ -136,6 +136,12 @@ RequestAction(IPS_GetObjectIDByIdent('Playlist', 12345), 0);
 ```
 
 ### 9. Versionshistorie
+
+v1.3.20261123
+
+* _NEU_: Lautstärke und Stumm nutzen die Medienprofile `~Volume` und `~Mute`, die Kachel wird dadurch als Medienplayer statt als Lampe erkannt
+* _NEU_: Der laufende Sender wird in der Senderliste markiert
+* _FIX_: Senderauswahl in der Kachel startete immer den ersten Sender der Liste
 
 v1.2.20261123
 

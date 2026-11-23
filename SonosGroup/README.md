@@ -3,7 +3,7 @@
 [![Home](https://img.shields.io/badge/Home-wilkware.de-0b1830.svg?style=flat-square)](https://wilkware.de/module/sonos/)
 [![Version](https://img.shields.io/badge/Symcon-PHP--Modul-red.svg?style=flat-square)](https://www.symcon.de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/)
 [![Product](https://img.shields.io/badge/Symcon%20Version-8.1-blue.svg?style=flat-square)](https://www.symcon.de/produkt/)
-[![Version](https://img.shields.io/badge/Modul%20Version-1.2.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
+[![Version](https://img.shields.io/badge/Modul%20Version-1.3.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg?style=flat-square)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Actions](https://img.shields.io/github/actions/workflow/status/wilkware/SonosUPnP/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Wilkware/SonosUPnP/actions)
 
@@ -31,7 +31,7 @@ Die Gruppe entspricht den gespeicherten Gruppen der Sonos-App, die über UPnP ni
 * Interpret, Titel, Album bzw. Sendername und Cover werden vom Gruppenkoordinator übernommen.
 * Anzeige der Gruppenmitglieder (Koordinator zuerst).
 * Play und Senderwahl an der Gruppe holen die weiteren Lautsprecher der Liste, die die Gruppe verlassen haben, automatisch zurück - wie das erneute Anhaken des Raums in der Sonos-App.
-* Lautstärke und Stummschaltung bleiben bewusst beim einzelnen _Sonos Lautsprecher_.
+* Gruppenlautstärke und Stummschaltung der ganzen Gruppe - wie der Gruppenregler der Sonos-App: Die Lautstärken der Mitglieder werden im bestehenden Verhältnis angepasst. Die Einzellautstärke bleibt am jeweiligen _Sonos Lautsprecher_ einstellbar.
 * Erkennung einer nicht erreichbaren Gruppe mit automatischer Wiederaufnahme.
 
 _Hinweis:_ Fest eingerichtete (gespeicherte) Gruppen der Sonos-App sind über die lokale UPnP-Schnittstelle nicht sichtbar. Die Instanz arbeitet mit der aktuellen Wiedergabegruppe; welche Lautsprecher dazugehören sollen, wird deshalb über ihre Lautsprecherliste festgelegt.
@@ -92,6 +92,8 @@ Ident    | Name         | Typ     | Beschreibung
 -------- | ------------ | ------- | ------------------------------
 Playback | Wiedergabe   | Integer | Steuerung und Anzeige der Wiedergabe der Gruppe (Zurück, Stopp, Play, Pause, Weiter)
 Members  | Mitglieder   | String  | Raumnamen der Gruppenmitglieder, Koordinator zuerst
+Volume   | Lautstärke   | Integer | Gruppenlautstärke (0..100%), Mitglieder werden im Verhältnis angepasst
+Mute     | Stumm        | Boolean | Stummschaltung der ganzen Gruppe
 Artist   | Interpret    | String  | Interpret des aktuellen Titels
 Title    | Titel        | String  | Aktueller Titel
 Album    | Album        | String  | Album des aktuellen Titels bzw. Sendername bei Radiostreams
@@ -105,12 +107,12 @@ _Erreichbarkeit:_ Antwortet der Hauptlautsprecher oder der Gruppenkoordinator ni
 
 ### 6. Darstellungen
 
-Es werden keine eigenen Darstellungen oder Profile angelegt, verwendet werden ausschließlich die Standardprofile von Symcon (`~PlaybackPreviousNext`, `~Artist`, `~Song`, `~Playlist`).
+Es werden keine eigenen Darstellungen oder Profile angelegt, verwendet werden ausschließlich die Medienprofile von Symcon (`~PlaybackPreviousNext`, `~Volume`, `~Mute`, `~Artist`, `~Song`, `~Playlist`).
 
 ### 7. Visualisierung
 
 Alle Statusvariablen und das Cover können direkt in der Visualisierung (Kachel- und WebFront) verwendet werden.  
-Wiedergabe und Senderauswahl sind schaltbar.
+Wiedergabe, Lautstärke, Stumm und Senderauswahl sind schaltbar. Der aktuell laufende Sender ist in der Senderliste markiert.
 
 ### 8. Befehlsreferenz
 
@@ -118,7 +120,7 @@ Wiedergabe und Senderauswahl sind schaltbar.
 bool WWXSU_UpdateGroupStatus(int $InstanzID);
 ```
 
-Fragt Gruppenstruktur, Wiedergabestatus und Titelinformationen sofort ab und aktualisiert die Statusvariablen.  
+Fragt Gruppenstruktur, Wiedergabestatus, Titelinformationen, Gruppenlautstärke und Stummschaltung sofort ab und aktualisiert die Statusvariablen.  
 Liefert `true`, wenn die Gruppe geantwortet hat, sonst `false`.
 
 Beispiel:
@@ -136,9 +138,17 @@ Die Steuerung erfolgt über `RequestAction` auf die jeweilige Statusvariable, z.
 RequestAction(IPS_GetObjectIDByIdent('Playback', 12345), 2);
 // Ersten Sender der Senderliste in der Gruppe abspielen
 RequestAction(IPS_GetObjectIDByIdent('Playlist', 12345), 0);
+// Gruppenlautstärke auf 20% setzen
+RequestAction(IPS_GetObjectIDByIdent('Volume', 12345), 20);
 ```
 
 ### 9. Versionshistorie
+
+v1.3.20261123
+
+* _NEU_: Gruppenlautstärke und Stummschaltung der ganzen Gruppe (wie der Gruppenregler der Sonos-App)
+* _NEU_: Der laufende Sender wird in der Senderliste markiert
+* _FIX_: Senderauswahl in der Kachel startete immer den ersten Sender der Liste
 
 v1.2.20261123
 

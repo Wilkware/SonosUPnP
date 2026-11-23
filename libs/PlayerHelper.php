@@ -114,6 +114,9 @@ trait PlayerHelper
             $this->SetValueInteger('Playback', $playback);
         }
 
+        // Highlight the playing station in the station list, none if something else is playing
+        $this->UpdatePlaylistCurrent($this->FindStationIndexByUri($trackInfo['uri']) ?? -1);
+
         if ($this->IsTransientMetadata($trackInfo['title']) || $this->IsTransientMetadata($trackInfo['artist'])) {
             // While connecting/buffering a stream Sonos reports internal
             // placeholders like "ZPSTR_CONNECTING" - keep the previous values.
@@ -250,7 +253,34 @@ trait PlayerHelper
 
         if ($this->PlayStreamUri($ip, $station['StreamURL'], $station['Name'])) {
             $this->SetValueInteger('Playback', self::PLAYBACK_PLAY);
+            $this->UpdatePlaylistCurrent($index);
         }
+    }
+
+    /**
+     * Extracts the selected station index from a Playlist action value.
+     * The visualization sends the complete playlist JSON with "current" set
+     * to the selected entry, scripts may pass the plain index.
+     *
+     * @param mixed $value Value passed to RequestAction
+     *
+     * @return int|null Selected index, or null if the value cannot be interpreted
+     */
+    private function ParsePlaylistIndex(mixed $value): ?int
+    {
+        if (is_int($value) || (is_string($value) && is_numeric($value))) {
+            return (int) $value;
+        }
+
+        if (is_string($value)) {
+            $playlist = json_decode($value, true);
+            if (is_array($playlist) && isset($playlist['current']) && is_numeric($playlist['current'])) {
+                return (int) $playlist['current'];
+            }
+        }
+
+        $this->LogDebug(__FUNCTION__, 'Unsupported playlist value: ' . var_export($value, true));
+        return null;
     }
 
     // -------------------------------------------------------------------------
@@ -547,8 +577,64 @@ trait PlayerHelper
             ];
         }
 
-        $playlist = json_encode(['entries' => $entries, 'current' => 0]);
+        $current = $this->GetBuffer('PlaylistCurrent');
+        $current = $current === '' ? -1 : (int) $current;
+        if ($current >= count($entries)) {
+            $current = -1;
+        }
+
+        $playlist = json_encode(['entries' => $entries, 'current' => $current]);
         $this->SetValueString('Playlist', $playlist);
+    }
+
+    /**
+     * Marks a station as the current entry of the Playlist variable.
+     *
+     * @param int $index Index of the station, -1 for none
+     *
+     * @return void
+     */
+    private function UpdatePlaylistCurrent(int $index): void
+    {
+        $previous = $this->GetBuffer('PlaylistCurrent');
+        if ($previous !== '' && (int) $previous === $index) {
+            return;
+        }
+
+        $this->SetBuffer('PlaylistCurrent', (string) $index);
+        $this->RefreshPlaylistVariable();
+    }
+
+    /**
+     * Looks up the index of the configured station whose StreamURL matches
+     * the given track URI.
+     *
+     * @param string $uri The track URI to look up.
+     *
+     * @return int|null Index in the active station list, or null if no station matches
+     */
+    private function FindStationIndexByUri(string $uri): ?int
+    {
+        if ($uri === '') {
+            return null;
+        }
+
+        $stations = json_decode($this->ReadAttributeString('ActiveStations'), true);
+        if (!is_array($stations)) {
+            return null;
+        }
+
+        foreach ($stations as $index => $station) {
+            $streamUrl = $station['StreamURL'] ?? '';
+            // Sonos sometimes prefixes the TrackURI with an internal protocol
+            // scheme (e.g. "aac://https://..."), so compare by suffix instead
+            // of exact equality.
+            if ($streamUrl !== '' && str_ends_with($uri, $streamUrl)) {
+                return (int) $index;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -563,26 +649,13 @@ trait PlayerHelper
      */
     private function FindStationByUri(string $uri): ?array
     {
-        if ($uri === '') {
+        $index = $this->FindStationIndexByUri($uri);
+        if ($index === null) {
             return null;
         }
 
         $stations = json_decode($this->ReadAttributeString('ActiveStations'), true);
-        if (!is_array($stations)) {
-            return null;
-        }
-
-        foreach ($stations as $station) {
-            $streamUrl = $station['StreamURL'] ?? '';
-            // Sonos sometimes prefixes the TrackURI with an internal protocol
-            // scheme (e.g. "aac://https://..."), so compare by suffix instead
-            // of exact equality.
-            if ($streamUrl !== '' && str_ends_with($uri, $streamUrl)) {
-                return $station;
-            }
-        }
-
-        return null;
+        return $stations[$index] ?? null;
     }
 
     // -------------------------------------------------------------------------

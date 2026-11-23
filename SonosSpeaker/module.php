@@ -239,8 +239,9 @@ class SonosSpeaker extends IPSModuleStrict
                 $this->HandleMuteAction((bool) $value);
                 break;
             case 'Playlist':
-                if (!$this->HandleGroupMemberAction($ident, (int) $value)) {
-                    $this->HandlePlaylistAction((int) $value);
+                $index = $this->ParsePlaylistIndex($value);
+                if ($index !== null && !$this->HandleGroupMemberAction($ident, $index)) {
+                    $this->HandlePlaylistAction($index);
                 }
                 break;
             case 'Update':
@@ -523,10 +524,10 @@ class SonosSpeaker extends IPSModuleStrict
         $this->RegisterVariableInteger('Playback', $this->Translate('Playback'), '~PlaybackPreviousNext', 10);
         $this->EnableAction('Playback');
 
-        $this->RegisterVariableInteger('Volume', $this->Translate('Volume'), '~Intensity.100', 20);
+        $this->RegisterVariableInteger('Volume', $this->Translate('Volume'), '~Volume', 20);
         $this->EnableAction('Volume');
 
-        $this->RegisterVariableBoolean('Mute', $this->Translate('Mute'), '~Switch', 30);
+        $this->RegisterVariableBoolean('Mute', $this->Translate('Mute'), '~Mute', 30);
         $this->EnableAction('Mute');
 
         $this->RegisterVariableString('Artist', $this->Translate('Artist'), '~Artist', 40);

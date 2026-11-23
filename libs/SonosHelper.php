@@ -277,6 +277,78 @@ trait SonosHelper
     }
 
     /**
+     * Sets the volume of a whole group.
+     *
+     * @param string $ip     IP address of the group coordinator
+     * @param int    $volume Group volume (0-100)
+     *
+     * @return bool true on success, false if the SOAP call failed
+     */
+    private function SetGroupVolume(string $ip, int $volume): bool
+    {
+        try {
+            (new \Wilkware\SonosUPnP\SonosSoapClient($ip))->setGroupVolume($volume);
+            return true;
+        } catch (\Wilkware\SonosUPnP\SonosSoapException $e) {
+            $this->LogDebug(__FUNCTION__, $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Retrieves the volume of a whole group.
+     *
+     * @param string $ip IP address of the group coordinator
+     *
+     * @return int|false Group volume (0-100), or false if the SOAP call failed
+     */
+    private function GetGroupVolume(string $ip): int|false
+    {
+        try {
+            return (new \Wilkware\SonosUPnP\SonosSoapClient($ip))->getGroupVolume();
+        } catch (\Wilkware\SonosUPnP\SonosSoapException $e) {
+            $this->LogDebug(__FUNCTION__, $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Mutes or unmutes a whole group.
+     *
+     * @param string $ip   IP address of the group coordinator
+     * @param bool   $mute true to mute, false to unmute
+     *
+     * @return bool true on success, false if the SOAP call failed
+     */
+    private function SetGroupMute(string $ip, bool $mute): bool
+    {
+        try {
+            (new \Wilkware\SonosUPnP\SonosSoapClient($ip))->setGroupMute($mute);
+            return true;
+        } catch (\Wilkware\SonosUPnP\SonosSoapException $e) {
+            $this->LogDebug(__FUNCTION__, $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Retrieves the mute state of a whole group.
+     *
+     * @param string $ip IP address of the group coordinator
+     *
+     * @return bool|null true if muted, false if not, null if the SOAP call failed
+     */
+    private function GetGroupMute(string $ip): bool|null
+    {
+        try {
+            return (new \Wilkware\SonosUPnP\SonosSoapClient($ip))->getGroupMute();
+        } catch (\Wilkware\SonosUPnP\SonosSoapException $e) {
+            $this->LogDebug(__FUNCTION__, $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Retrieves the current group structure of the whole Sonos system.
      * Every player knows the complete topology, so any reachable one will do.
      *
@@ -578,6 +650,12 @@ class SonosSoapClient
         'controlUrl' => '/MediaRenderer/RenderingControl/Control'
     ];
 
+    /** @var array{type: string, controlUrl: string} GroupRenderingControl service definition (only on the group coordinator) */
+    private const SERVICE_GROUP_RENDERING = [
+        'type'       => 'urn:schemas-upnp-org:service:GroupRenderingControl:1',
+        'controlUrl' => '/MediaRenderer/GroupRenderingControl/Control'
+    ];
+
     /** @var array{type: string, controlUrl: string} ZoneGroupTopology service definition */
     private const SERVICE_ZONE_TOPOLOGY = [
         'type'       => 'urn:schemas-upnp-org:service:ZoneGroupTopology:1',
@@ -765,6 +843,67 @@ class SonosSoapClient
         $this->callRenderingControl('SetMute', [
             'Channel'      => 'Master',
             'DesiredMute'  => $mute ? '1' : '0'
+        ]);
+    }
+
+    /**
+     * Retrieves the volume of the whole group (call on the group coordinator).
+     *
+     * @throws SonosSoapException if the SOAP call fails
+     *
+     * @return int Group volume (0-100)
+     */
+    public function getGroupVolume(): int
+    {
+        $result = $this->call(self::SERVICE_GROUP_RENDERING, 'GetGroupVolume', []);
+        return (int) ($result['CurrentVolume'] ?? 0);
+    }
+
+    /**
+     * Sets the volume of the whole group (call on the group coordinator).
+     * Like the group slider of the Sonos app, the member volumes are changed
+     * proportionally, so the snapshot of the current ratios is taken first.
+     *
+     * @param int $volume Group volume (0-100)
+     *
+     * @throws SonosSoapException if the SOAP call fails
+     *
+     * @return void
+     */
+    public function setGroupVolume(int $volume): void
+    {
+        $this->call(self::SERVICE_GROUP_RENDERING, 'SnapshotGroupVolume', []);
+        $this->call(self::SERVICE_GROUP_RENDERING, 'SetGroupVolume', [
+            'DesiredVolume' => (string) max(0, min(100, $volume))
+        ]);
+    }
+
+    /**
+     * Retrieves the mute state of the whole group (call on the group coordinator).
+     *
+     * @throws SonosSoapException if the SOAP call fails
+     *
+     * @return bool true if the group is muted
+     */
+    public function getGroupMute(): bool
+    {
+        $result = $this->call(self::SERVICE_GROUP_RENDERING, 'GetGroupMute', []);
+        return (string) ($result['CurrentMute'] ?? '0') === '1';
+    }
+
+    /**
+     * Mutes or unmutes the whole group (call on the group coordinator).
+     *
+     * @param bool $mute true to mute, false to unmute
+     *
+     * @throws SonosSoapException if the SOAP call fails
+     *
+     * @return void
+     */
+    public function setGroupMute(bool $mute): void
+    {
+        $this->call(self::SERVICE_GROUP_RENDERING, 'SetGroupMute', [
+            'DesiredMute' => $mute ? '1' : '0'
         ]);
     }
 
