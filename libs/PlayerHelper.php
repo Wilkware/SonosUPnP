@@ -91,7 +91,7 @@ trait PlayerHelper
      * Updates Playback, Artist, Title, Album and Cover from a track info
      * result of GetPlayerTrackInfo().
      *
-     * @param array{state:string,uri:string,title:string,artist:string,album:string,coverUrl:string,stationTitle:string} $trackInfo Track info
+     * @param array{state:string,uri:string,mediaUri:string,title:string,artist:string,album:string,coverUrl:string,stationTitle:string} $trackInfo Track info
      *
      * @return void
      */
@@ -115,7 +115,10 @@ trait PlayerHelper
         }
 
         // Highlight the playing station in the station list, none if something else is playing
-        $this->UpdatePlaylistCurrent($this->FindStationIndexByUri($trackInfo['uri']) ?? -1);
+        // A station stored as playlist (.m3u/.pls) is only found via the media URI,
+        // the track URI is the stream Sonos resolved from it
+        $stationIndex = $this->FindStationIndexByUri($trackInfo['uri']) ?? $this->FindStationIndexByUri($trackInfo['mediaUri']);
+        $this->UpdatePlaylistCurrent($stationIndex ?? -1);
 
         if ($this->IsTransientMetadata($trackInfo['title']) || $this->IsTransientMetadata($trackInfo['artist'])) {
             // While connecting/buffering a stream Sonos reports internal
@@ -133,7 +136,7 @@ trait PlayerHelper
             return;
         }
 
-        $matchedStation = $this->FindStationByUri($trackInfo['uri']);
+        $matchedStation = $stationIndex !== null ? $this->GetActiveStation($stationIndex) : null;
 
         // For radio broadcasts (stationTitle set), upnp:album is
         // usually empty - fall back to the user's own configured
@@ -647,24 +650,17 @@ trait PlayerHelper
     }
 
     /**
-     * Looks up the configured station whose StreamURL matches the
-     * currently playing track URI - used both as a fallback cover (when
-     * the stream itself provides no per-track album art) and to derive a
-     * human-readable Album fallback from the user's own station naming.
+     * Returns a station of the active station list - used for the station
+     * logo as cover and the station name as title/album fallback.
      *
-     * @param string $uri The track URI to look up.
+     * @param int $index Index in the active station list
      *
      * @return array{Name:string,StreamURL:string,IconURL:string}|null
      */
-    private function FindStationByUri(string $uri): ?array
+    private function GetActiveStation(int $index): ?array
     {
-        $index = $this->FindStationIndexByUri($uri);
-        if ($index === null) {
-            return null;
-        }
-
         $stations = json_decode($this->ReadAttributeString('ActiveStations'), true);
-        return $stations[$index] ?? null;
+        return is_array($stations) && isset($stations[$index]) ? $stations[$index] : null;
     }
 
     // -------------------------------------------------------------------------

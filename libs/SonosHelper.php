@@ -118,7 +118,7 @@ trait SonosHelper
     /**
      * Retrieves the current track information from a player.
      *
-     * @return array{state:string,uri:string,title:string,artist:string,album:string,coverUrl:string,stationTitle:string}|false
+     * @return array{state:string,uri:string,mediaUri:string,title:string,artist:string,album:string,coverUrl:string,stationTitle:string}|false
      */
     private function GetPlayerTrackInfo(string $ip): array|false
     {
@@ -765,12 +765,14 @@ class SonosSoapClient
      *
      * @throws SonosSoapException if the SOAP call fails
      *
-     * @return array{state:string,uri:string,title:string,artist:string,album:string,coverUrl:string,stationTitle:string}
+     * @return array{state:string,uri:string,mediaUri:string,title:string,artist:string,album:string,coverUrl:string,stationTitle:string}
      */
     public function getTrackInfo(): array
     {
         $transportInfo = $this->callAvTransport('GetTransportInfo', []);
         $positionInfo = $this->callAvTransport('GetPositionInfo', ['Unit' => 'REL_TIME']);
+        // The source as it was set (e.g. an .m3u playlist), TrackURI is the stream resolved from it
+        $mediaInfo = $this->callAvTransport('GetMediaInfo', []);
 
         $metadata = $positionInfo['TrackMetaData'] ?? '';
         $parsed = $this->parseDidlLite($metadata);
@@ -778,6 +780,7 @@ class SonosSoapClient
         return [
             'state'        => $transportInfo['CurrentTransportState'] ?? 'STOPPED',
             'uri'          => $positionInfo['TrackURI'] ?? '',
+            'mediaUri'     => $mediaInfo['CurrentURI'] ?? '',
             'title'        => $parsed['title'],
             'artist'       => $parsed['artist'],
             'album'        => $parsed['album'],
