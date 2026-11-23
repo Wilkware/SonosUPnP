@@ -37,6 +37,11 @@
                     "maximum": 60,
                     "minimum": 5,
                     "value": 5
+                },
+                {
+                    "type": "CheckBox",
+                    "name": "OfflineAsError",
+                    "caption": "Report unreachable speaker as error (disable for speakers that are intentionally powered off)"
                 }
             ]
         },
@@ -223,12 +228,17 @@
         {
             "code": 104,
             "icon": "inactive",
-            "caption": "No player selected"
+            "caption": "Speaker not reachable (switched off)"
         },
         {
             "code": 201,
             "icon": "error",
             "caption": "Speaker not reachable"
+        },
+        {
+            "code": 202,
+            "icon": "error",
+            "caption": "No player selected"
         }
     ]
 }

@@ -52,7 +52,7 @@ class SonosConfigurator extends IPSModuleStrict
         parent::Create();
 
         // From Symcon 8.2 on the parent is created automatically via parentRequirements
-        if ((float) IPS_GetKernelVersion() < 8.2) {
+        if ((float) IPS_GetKernelVersion() < 8.2 && method_exists($this, 'RequireParent')) {
             $this->RequireParent(self::SONOS_BRIDGE_MODULE_GUID);
         }
     }

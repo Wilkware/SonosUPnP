@@ -8,6 +8,7 @@ require_once __DIR__ . '/../libs/_traits.php';
 /** Namespaced traits */
 use Wilkware\SonosUPnP\DebugHelper;
 use Wilkware\SonosUPnP\FormHelper;
+use Wilkware\SonosUPnP\PlayerHelper;
 use Wilkware\SonosUPnP\SonosHelper;
 use Wilkware\SonosUPnP\VariableHelper;
 
@@ -22,6 +23,7 @@ class SonosSpeaker extends IPSModuleStrict
 
     use DebugHelper;
     use FormHelper;
+    use PlayerHelper;
     use SonosHelper;
     use VariableHelper;
 
@@ -29,34 +31,11 @@ class SonosSpeaker extends IPSModuleStrict
     // GUIDs
     // -------------------------------------------------------------------------
 
-    /** @var string Dataflow interface GUID (child -> Sonos Bridge, SendDataToParent/ForwardData) */
-    private const SONOS_BRIDGE_GUID = '{48975ECF-9DF0-5CD7-F937-CEFCAFA4A4B9}';
-
     /** @var string ModulID (Sonos Bridge), required by RequireParent */
     private const SONOS_BRIDGE_MODULE_GUID = '{FB07CB8D-A0BD-45B9-C334-02FFCCFD148C}';
 
-    // -------------------------------------------------------------------------
-    // Playback profile values
-    // -------------------------------------------------------------------------
-
-    // Verified against IPS_GetVariableProfile('~PlaybackPreviousNext')['Associations']:
-    // 0=Zurueck (Previous), 1=Stop, 2=Play, 3=Pause, 4=Weiter (Next).
-    // This differs from the values used by the official Sonos Cloud module's
-    // own custom profile - do NOT reuse those assumptions for this built-in profile.
-    private const PLAYBACK_PREVIOUS = 0;
-    private const PLAYBACK_STOP = 1;
-    private const PLAYBACK_PLAY = 2;
-    private const PLAYBACK_PAUSE = 3;
-    private const PLAYBACK_NEXT = 4;
-
-    /** @var int Default interval for updating player status (in seconds) */
-    private const DEFAULT_UPDATE_INTERVAL = 10; // seconds
-
-    /** @var int Poll interval while the speaker is unreachable (in seconds) */
-    private const OFFLINE_UPDATE_INTERVAL = 30; // seconds
-
-    /** @var int Instance status: speaker does not answer */
-    private const STATUS_UNREACHABLE = 201;
+    /** @var int Instance status: no player selected */
+    private const STATUS_NO_PLAYER = 202;
 
     // -------------------------------------------------------------------------
     // Methods
@@ -73,7 +52,7 @@ class SonosSpeaker extends IPSModuleStrict
         //Never delete this line!
         parent::Create();
 
-        if ((float) IPS_GetKernelVersion() < 8.2) {
+        if ((float) IPS_GetKernelVersion() < 8.2 && method_exists($this, 'RequireParent')) {
             $this->RequireParent(self::SONOS_BRIDGE_MODULE_GUID);
         }
 
@@ -90,6 +69,10 @@ class SonosSpeaker extends IPSModuleStrict
 
         // Poll interval for playback state/volume/track metadata.
         $this->RegisterPropertyInteger('UpdateInterval', self::DEFAULT_UPDATE_INTERVAL);
+
+        // Report an unreachable speaker as error (201) or only as inactive (104),
+        // e.g. for speakers that are intentionally disconnected from power.
+        $this->RegisterPropertyBoolean('OfflineAsError', true);
 
         // Caches the station list currently shown in the Playlist variable,
         // so RequestAction() can resolve a selected index back to a stream URI.
@@ -173,13 +156,13 @@ class SonosSpeaker extends IPSModuleStrict
         $uuid = $this->ReadPropertyString('PlayerUUID');
 
         if ($uuid === '') {
-            $this->SetStatus(104);
+            $this->SetStatus(self::STATUS_NO_PLAYER);
             $this->SetTimerInterval('UpdateStatus', 0);
             return;
         }
 
-        // Set status to active (102), the next poll switches to 201 if the speaker does not answer
-        $this->SetStatus(102);
+        // Active (102), or keep the offline state (201/104) - the next poll corrects it either way
+        $this->ApplyReachabilityStatus();
 
         // Everything else is deferred until IPS_KERNELSTARTED (see MessageSink)
         if (IPS_GetKernelRunlevel() !== KR_READY) {
@@ -192,7 +175,7 @@ class SonosSpeaker extends IPSModuleStrict
         $this->RefreshPlaylistVariable();
 
         // Set the timer interval for polling the current playback state, volume, mute and track metadata.
-        $this->SetTimerInterval('UpdateStatus', $this->GetUpdateInterval() * 1000);
+        $this->SetTimerInterval('UpdateStatus', $this->GetCurrentPollInterval() * 1000);
     }
 
     /**
@@ -245,7 +228,9 @@ class SonosSpeaker extends IPSModuleStrict
 
         switch ($ident) {
             case 'Playback':
-                $this->HandlePlaybackAction((int) $value);
+                if (!$this->HandleGroupMemberAction($ident, (int) $value)) {
+                    $this->HandlePlaybackAction((int) $value);
+                }
                 break;
             case 'Volume':
                 $this->HandleVolumeAction((int) $value);
@@ -254,13 +239,15 @@ class SonosSpeaker extends IPSModuleStrict
                 $this->HandleMuteAction((bool) $value);
                 break;
             case 'Playlist':
-                $this->HandlePlaylistAction((int) $value);
+                if (!$this->HandleGroupMemberAction($ident, (int) $value)) {
+                    $this->HandlePlaylistAction((int) $value);
+                }
                 break;
             case 'Update':
                 // Value 1 = triggered manually from the configuration form (show result), 0 = timer
                 $error = $this->PollStatus();
                 if ((bool) $value) {
-                    $this->ShowStatusPopup($error);
+                    $this->ShowStatusPopup($error, ['Playback', 'Artist', 'Title', 'Album', 'Volume', 'Mute']);
                 }
                 break;
             default:
@@ -334,48 +321,24 @@ class SonosSpeaker extends IPSModuleStrict
             return sprintf($this->Translate('Speaker not reachable (IP: %s).'), $ip);
         }
 
-        if ($this->GetStatus() === self::STATUS_UNREACHABLE) {
+        if ($this->IsOffline()) {
             $this->SetOnline();
         }
 
-        // This presentation reflects the raw current transport state
-        // directly. Sonos reports several distinct states here
-        // (PLAYING, PAUSED_PLAYBACK, STOPPED, TRANSITIONING,
-        // NO_MEDIA_PRESENT) - map them explicitly instead of collapsing
-        // everything non-PLAYING into Pause.
-        $this->SetValueInteger('Playback', match ($trackInfo['state']) {
-            'PLAYING'         => self::PLAYBACK_PLAY,
-            'PAUSED_PLAYBACK' => self::PLAYBACK_PAUSE,
-            'STOPPED'         => self::PLAYBACK_STOP,
-            default           => self::PLAYBACK_STOP // TRANSITIONING, NO_MEDIA_PRESENT, unknown
-        });
-
-        if ($this->LooksLikeJunkMetadata($trackInfo['title'])) {
-            // TuneIn sometimes reports an ad-bumper tracking URL as the
-            // "title" during ad breaks (e.g. "...mp3?aw_0_1st...&..."),
-            // instead of real track info. Keep the previous values
-            // rather than overwriting them with tracking junk.
-            $this->LogDebug(__FUNCTION__, 'Ignoring junk metadata during ad break: ' . $trackInfo['title']);
-        } else {
-            $matchedStation = $this->FindStationByUri($trackInfo['uri']);
-
-            // For radio broadcasts (stationTitle set), upnp:album is
-            // usually empty - fall back to the user's own configured
-            // station name first ("Arabella"), then the raw technical
-            // station title as a last resort ("radioarabella-muenchen...").
-            $album = $trackInfo['album'];
-            if ($album === '' && $trackInfo['stationTitle'] !== '') {
-                $album = $matchedStation['Name'] ?? $trackInfo['stationTitle'];
+        // As a group member the speaker reports no usable metadata of its own,
+        // track info and cover are taken from the group coordinator instead
+        $coordinator = $this->ResolveCoordinator($ip);
+        if ($coordinator !== null && $coordinator['uuid'] !== $this->ReadPropertyString('PlayerUUID')) {
+            $this->LogDebug(__FUNCTION__, 'Group member, reading track info from coordinator ' . $coordinator['ip']);
+            $coordinatorInfo = $this->GetPlayerTrackInfo($coordinator['ip']);
+            if ($coordinatorInfo !== false) {
+                $trackInfo = $coordinatorInfo;
+            } else {
+                $this->LogDebug(__FUNCTION__, 'Coordinator did not answer, keeping own track info.');
             }
-
-            $this->SetValueString('Artist', $trackInfo['artist']);
-            $this->SetValueString('Title', $trackInfo['title']);
-            $this->SetValueString('Album', $album);
-
-            $trackKey = $trackInfo['artist'] . '|' . $trackInfo['title'] . '|' . $album . '|' . $trackInfo['uri'];
-            $coverUrl = $trackInfo['coverUrl'] !== '' ? $trackInfo['coverUrl'] : ($matchedStation['IconURL'] ?? '');
-            $this->UpdateCover($coverUrl, $trackKey);
         }
+
+        $this->UpdateTrackVariables($trackInfo);
 
         $volume = $this->GetPlayerVolume($ip);
         $this->LogDebug(__FUNCTION__, 'GetPlayerVolume() returned: ' . var_export($volume, true));
@@ -392,100 +355,67 @@ class SonosSpeaker extends IPSModuleStrict
         return '';
     }
 
-    /**
-     * Shows the result of a manual status poll in a popup: either the
-     * error text or a summary of the current status variables.
-     *
-     * @param string $error Error text of PollStatus(), empty on success
-     *
-     * @return void
-     */
-    private function ShowStatusPopup(string $error): void
-    {
-        if ($error !== '') {
-            $this->EchoMessage($error);
-            return;
-        }
-
-        $msg = '';
-        foreach (['Playback', 'Artist', 'Title', 'Album', 'Volume', 'Mute'] as $ident) {
-            $msg .= sprintf("%s: %s\n", $this->Translate($ident), GetValueFormatted($this->GetIDForIdent($ident)));
-        }
-        $this->EchoMessage(rtrim($msg));
-    }
-
-    /**
-     * Show message via popup
-     *
-     * @param string $caption echo message (already translated)
-     *
-     * @return void
-     */
-    private function EchoMessage(string $caption): void
-    {
-        $this->UpdateFormField('EchoMessage', 'caption', $caption);
-        $this->UpdateFormField('EchoPopup', 'visible', true);
-    }
-
     // -------------------------------------------------------------------------
     // Action handlers
     // -------------------------------------------------------------------------
 
     /**
-     * Handles playback control actions (Previous, Stop, Play, Pause, Next).
+     * Applies the group rules to a playback or station action, same as the
+     * Sonos app: while the speaker's group is playing, the group must be
+     * controlled via the Sonos Group instance (only a hint is shown). If the
+     * group is idle, Play and station selection take the speaker out of the
+     * group, so it plays on its own. This applies to members and to the
+     * coordinator alike (Sonos hands the coordinator role over to a remaining
+     * member); a speaker playing on its own is not affected.
      *
-     * @param int $command Playback command to send.
+     * @param string $ident Ident of the action (Playback or Playlist)
+     * @param int    $value Playback command or station index
      *
-     * @return void
+     * @return bool True if the action was handled (or rejected) here, false if the regular handler should run
      */
-    private function HandlePlaybackAction(int $command): void
+    private function HandleGroupMemberAction(string $ident, int $value): bool
     {
-        $this->LogDebug(__FUNCTION__, sprintf('Transport command %d!', $command));
         $ip = $this->ResolvePlayerIp();
         if ($ip === null) {
-            return;
+            return false;
         }
 
-        $success = match ($command) {
-            self::PLAYBACK_PREVIOUS => $this->SendTransportCommand($ip, 'previous'),
-            self::PLAYBACK_STOP     => $this->SendTransportCommand($ip, 'stop'),
-            self::PLAYBACK_PLAY     => $this->SendTransportCommand($ip, 'play'),
-            self::PLAYBACK_PAUSE    => $this->SendTransportCommand($ip, 'pause'),
-            self::PLAYBACK_NEXT     => $this->SendTransportCommand($ip, 'next'),
-            default                 => false
-        };
-
-        if (!$success) {
-            $this->LogDebug(__FUNCTION__, sprintf('Transport command %d failed for %s', $command, $ip));
-            return;
+        $groups = $this->GetZoneGroups($ip);
+        $group = $groups !== false ? $this->FindGroup($groups) : null;
+        if ($group === null || count($group['members']) < 2) {
+            return false;
         }
 
-        // Optimistic UI update: directly mirror the resulting state.
-        // Next/Previous don't change the play/pause/stop state itself, so
-        // the Playback value is left untouched here; the next poll corrects
-        // it based on the actual transport state.
-        if (in_array($command, [
-            self::PLAYBACK_PLAY,
-            self::PLAYBACK_PAUSE,
-            self::PLAYBACK_STOP
-        ], true)) {
-            $this->SetValueInteger('Playback', $command);
+        $groupInfo = $this->GetPlayerTrackInfo($group['ip']);
+        if ($groupInfo !== false && in_array($groupInfo['state'], ['PLAYING', 'TRANSITIONING'], true)) {
+            $this->LogDebug(__FUNCTION__, 'Group is playing, action rejected.');
+            echo $this->Translate('This speaker belongs to a playing group, please use the Sonos Group instance.');
+            return true;
         }
-    }
 
-    /**
-     * Heuristically detects ad-bumper tracking URLs that TuneIn sometimes
-     * returns as "title" during ad breaks (e.g. filenames with tracking
-     * query parameters like "...mp3?aw_0_1st.playerid=...&..."). Real song
-     * titles essentially never contain both "?" and "&" characters.
-     *
-     * @param string $title Track title to check.
-     *
-     * @return bool True if the title looks like a junk tracking URL, false otherwise.
-     */
-    private function LooksLikeJunkMetadata(string $title): bool
-    {
-        return str_contains($title, '?') && str_contains($title, '&');
+        // Stop, pause or skip on an idle group: nothing to do for a single speaker
+        if ($ident === 'Playback' && $value !== self::PLAYBACK_PLAY) {
+            $this->LogDebug(__FUNCTION__, sprintf('Group is idle, command %d ignored.', $value));
+            return true;
+        }
+
+        // Read the group's source before leaving, a member has none of its own
+        $media = $ident === 'Playback' ? $this->GetPlayerMediaInfo($group['ip']) : false;
+
+        $this->LogDebug(__FUNCTION__, 'Group is idle, leaving the group to play solo.');
+        if (!$this->LeavePlayerGroup($ip)) {
+            return true;
+        }
+
+        // Queues (x-rincon-queue:) belong to the coordinator and cannot be taken over, the speaker
+        // then plays its own queue; radio streams (e.g. x-rincon-mp3radio:) are taken over fine
+        $transferable = $media !== false && $media['uri'] !== ''
+            && !str_starts_with($media['uri'], 'x-rincon-queue:') && !str_starts_with($media['uri'], 'x-rincon:');
+        if ($transferable) {
+            $this->SetPlayerUri($ip, $media['uri'], $media['metadata']);
+        }
+
+        return false;
     }
 
     /**
@@ -527,171 +457,19 @@ class SonosSpeaker extends IPSModuleStrict
         }
     }
 
-    /**
-     * Handles playlist control actions.
-     *
-     * @param int $index Index of the station to play.
-     *
-     * @return void
-     */
-    private function HandlePlaylistAction(int $index): void
-    {
-        $ip = $this->ResolvePlayerIp();
-        if ($ip === null) {
-            return;
-        }
-
-        $stations = json_decode($this->ReadAttributeString('ActiveStations'), true);
-        if (!is_array($stations) || !isset($stations[$index])) {
-            $this->LogDebug(__FUNCTION__, sprintf('Invalid playlist index %d', $index));
-            return;
-        }
-
-        $station = $stations[$index];
-
-        if ($this->PlayStreamUri($ip, $station['StreamURL'], $station['Name'])) {
-            $this->SetValueInteger('Playback', self::PLAYBACK_PLAY);
-        }
-    }
-
     // -------------------------------------------------------------------------
-    // Helpers
+    // PlayerHelper implementation
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the configured poll interval (in seconds, at least 1).
+     * Transport and station commands go directly to this speaker, the
+     * group cases are handled beforehand by HandleGroupMemberAction().
      *
-     * @return int Poll interval in seconds
+     * @return string|null IP address of the speaker, or null if not available
      */
-    private function GetUpdateInterval(): int
+    private function ResolveTransportIp(): ?string
     {
-        return max(1, $this->ReadPropertyInteger('UpdateInterval'));
-    }
-
-    /**
-     * Switches the instance into the "unreachable" state: status 201,
-     * playback shown as stopped and a slower poll interval (backoff).
-     * Only logs once per outage.
-     *
-     * @param string $reason Reason for the log entry
-     *
-     * @return void
-     */
-    private function SetOffline(string $reason): void
-    {
-        if ($this->GetStatus() === self::STATUS_UNREACHABLE) {
-            $this->LogDebug(__FUNCTION__, 'Still unreachable: ' . $reason);
-            return;
-        }
-
-        $this->LogMessage(sprintf('Speaker %s is not reachable: %s', $this->GetSpeakerLabel(), $reason), KL_WARNING);
-        $this->SetStatus(self::STATUS_UNREACHABLE);
-        $this->SetValueInteger('Playback', self::PLAYBACK_STOP);
-        $this->SetTimerInterval('UpdateStatus', max(self::OFFLINE_UPDATE_INTERVAL, $this->GetUpdateInterval()) * 1000);
-    }
-
-    /**
-     * Leaves the "unreachable" state: status 102, regular poll interval,
-     * station list and cover are refreshed.
-     *
-     * @return void
-     */
-    private function SetOnline(): void
-    {
-        $this->LogMessage(sprintf('Speaker %s is reachable again', $this->GetSpeakerLabel()), KL_NOTIFY);
-        $this->SetStatus(102);
-        $this->SetTimerInterval('UpdateStatus', $this->GetUpdateInterval() * 1000);
-
-        // Force a cover reload, the track may have changed during the outage
-        $this->WriteAttributeString('LastTrackKey', '');
-        $this->RefreshPlaylistVariable();
-    }
-
-    /**
-     * Tells the bridge that the cached IP did not answer, so it can
-     * schedule a (rate limited) rescan to pick up a changed DHCP address.
-     *
-     * @return void
-     */
-    private function ReportUnreachable(): void
-    {
-        $this->SendDataToParent(json_encode([
-            'DataID'   => self::SONOS_BRIDGE_GUID,
-            'Endpoint' => 'playerUnreachable',
-            'UUID'     => $this->ReadPropertyString('PlayerUUID')
-        ]));
-    }
-
-    /**
-     * Returns a human readable label for log messages.
-     *
-     * @return string Room name, or UUID if no room name is configured
-     */
-    private function GetSpeakerLabel(): string
-    {
-        $room = $this->ReadPropertyString('RoomName');
-        return $room !== '' ? $room : $this->ReadPropertyString('PlayerUUID');
-    }
-
-    /**
-     * Keeps the IM_CHANGESTATUS registration in sync with the current
-     * parent (bridge), so a re-activated bridge triggers a playlist refresh.
-     *
-     * @return void
-     */
-    private function RegisterParent(): void
-    {
-        $oldID = (int) $this->GetBuffer('ParentID');
-        $newID = IPS_GetInstance($this->InstanceID)['ConnectionID'];
-
-        if ($oldID === $newID) {
-            return;
-        }
-
-        if ($oldID > 0) {
-            $this->UnregisterMessage($oldID, IM_CHANGESTATUS);
-        }
-        if ($newID > 0) {
-            $this->RegisterMessage($newID, IM_CHANGESTATUS);
-        }
-        $this->SetBuffer('ParentID', (string) $newID);
-    }
-
-    /**
-     * Resolves the current IP address of this speaker via SonosBridge.
-     * Returns null (and logs) if the UUID is not configured or the
-     * bridge could not resolve it (e.g. device offline).
-     *
-     * @return string|null The resolved IP address, or null if not available.
-     */
-    private function ResolvePlayerIp(): ?string
-    {
-        $uuid = $this->ReadPropertyString('PlayerUUID');
-        if ($uuid === '') {
-            return null;
-        }
-
-        if (!$this->HasActiveParent()) {
-            $this->LogDebug(__FUNCTION__, 'No active parent (SonosBridge) connected yet.');
-            return null;
-        }
-
-        $response = $this->SendDataToParent(json_encode([
-            'DataID'   => self::SONOS_BRIDGE_GUID,
-            'Endpoint' => 'playerIP',
-            'UUID'     => $uuid
-        ]));
-
-        $this->LogDebug(__FUNCTION__, 'SendDataToParent() response: ' . $response);
-
-        $decoded = json_decode($response, true);
-
-        if (!is_array($decoded) || isset($decoded['error'])) {
-            $this->LogDebug(__FUNCTION__, sprintf('Could not resolve IP for %s: %s', $uuid, $decoded['error'] ?? 'no response'));
-            return null;
-        }
-
-        return $decoded['ip'] ?? null;
+        return $this->ResolvePlayerIp();
     }
 
     /**
@@ -707,44 +485,33 @@ class SonosSpeaker extends IPSModuleStrict
             return $override;
         }
 
-        if (!$this->HasActiveParent()) {
-            return [];
-        }
-
-        $response = $this->SendDataToParent(json_encode([
-            'DataID'   => self::SONOS_BRIDGE_GUID,
-            'Endpoint' => 'stations'
-        ]));
-
-        $decoded = json_decode($response, true);
-        return is_array($decoded) ? $decoded : [];
+        return $this->GetGlobalStations();
     }
 
     /**
-     * Rebuilds the Playlist variable (~Playlist profile) from the currently
-     * effective station list and caches the list so RequestAction() can map
-     * a selected index back to a stream URL.
+     * Returns a human readable label for log messages.
      *
-     * @return void
+     * @return string "Speaker" followed by the room name, or UUID if no room name is configured
      */
-    private function RefreshPlaylistVariable(): void
+    private function GetLogLabel(): string
     {
-        $stations = $this->GetEffectiveStations();
-        $this->WriteAttributeString('ActiveStations', json_encode($stations));
-
-        $entries = [];
-        foreach ($stations as $station) {
-            $entries[] = [
-                'song'     => $station['Name'],
-                'artist'   => '',
-                'duration' => 0,
-                'uri'      => $station['StreamURL']
-            ];
-        }
-
-        $playlist = json_encode(['entries' => $entries, 'current' => 0]);
-        $this->SetValueString('Playlist', $playlist);
+        $room = $this->ReadPropertyString('RoomName');
+        return 'Speaker ' . ($room !== '' ? $room : $this->ReadPropertyString('PlayerUUID'));
     }
+
+    /**
+     * The anchor is the speaker itself.
+     *
+     * @return string UUID of the speaker
+     */
+    private function GetAnchorUuid(): string
+    {
+        return $this->ReadPropertyString('PlayerUUID');
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
 
     /**
      * Creates the instance variables for the module.
@@ -769,118 +536,6 @@ class SonosSpeaker extends IPSModuleStrict
         $this->RegisterVariableString('Playlist', $this->Translate('Stations'), '~Playlist', 70);
         $this->EnableAction('Playlist');
 
-        // Cover image, following the same pattern as the official Sonos Cloud module.
-        if (!@IPS_GetObjectIDByIdent('Cover', $this->InstanceID)) {
-            $mediaID = IPS_CreateMedia(1);
-            IPS_SetParent($mediaID, $this->InstanceID);
-            IPS_SetIdent($mediaID, 'Cover');
-            IPS_SetMediaCached($mediaID, true);
-            // Connect to file
-            IPS_SetMediaFile($mediaID, $this->GetCoverFile(), false);
-            IPS_SetPosition($mediaID, 5);
-            IPS_SetName($mediaID, $this->Translate('Cover'));
-        }
-    }
-
-    /**
-     * Returns the media file of the cover image, relative to the kernel
-     * directory. The instance ID keeps it unique per speaker.
-     *
-     * @return string Relative path of the cover file
-     */
-    private function GetCoverFile(): string
-    {
-        return 'media' . DIRECTORY_SEPARATOR . $this->InstanceID . '.jpg';
-    }
-
-    /**
-     * Looks up the configured station whose StreamURL matches the
-     * currently playing track URI - used both as a fallback cover (when
-     * the stream itself provides no per-track album art) and to derive a
-     * human-readable Album fallback from the user's own station naming.
-     *
-     * @param string $uri The track URI to look up.
-     *
-     * @return array{Name:string,StreamURL:string,IconURL:string}|null
-     */
-    private function FindStationByUri(string $uri): ?array
-    {
-        if ($uri === '') {
-            return null;
-        }
-
-        $stations = json_decode($this->ReadAttributeString('ActiveStations'), true);
-        if (!is_array($stations)) {
-            return null;
-        }
-
-        foreach ($stations as $station) {
-            $streamUrl = $station['StreamURL'] ?? '';
-            // Sonos sometimes prefixes the TrackURI with an internal protocol
-            // scheme (e.g. "aac://https://..."), so compare by suffix instead
-            // of exact equality.
-            if ($streamUrl !== '' && str_ends_with($uri, $streamUrl)) {
-                return $station;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Downloads the given cover image and stores it in the Cover media
-     * object, but only if the track actually changed since the last poll.
-     * Comparing the track identity (not the cover URL) is necessary because
-     * Sonos' "getaa" cover endpoint returns a static URL per speaker whose
-     * image content changes per song - the URL itself never changes.
-     *
-     * Falls back to the bundled placeholder image (libs/noCover.png) if
-     * no cover URL is available at all, or the download fails.
-     *
-     * @param string $coverUrl The URL of the cover image to download.
-     * @param string $trackKey An identifier of the currently playing track (artist|title|album|uri).
-     *
-     * @return void
-     */
-    private function UpdateCover(string $coverUrl, string $trackKey): void
-    {
-        $this->LogDebug(__FUNCTION__, 'Update cover: ' . $coverUrl . ' (track key: ' . $trackKey . ')');
-        if ($trackKey === $this->ReadAttributeString('LastTrackKey')) {
-            $this->LogDebug(__FUNCTION__, 'Track has not changed since last poll, skipping cover update.');
-            return; // same track as last poll, nothing to do
-        }
-        $this->LogDebug(__FUNCTION__, 'Cover URL: ' . $coverUrl);
-
-        $content = false;
-
-        if ($coverUrl !== '') {
-            $this->LogDebug(__FUNCTION__, 'Downloading cover: ' . $coverUrl);
-            // No 'ignore_errors': a 4xx/5xx response must return false instead of storing an error page as cover
-            $context = stream_context_create(['http' => ['timeout' => 4]]);
-            $content = @file_get_contents($coverUrl, false, $context);
-
-            if ($content === false) {
-                $this->LogDebug(__FUNCTION__, 'Failed to download cover: ' . $coverUrl);
-            }
-        }
-
-        if ($content === false) {
-            $content = @file_get_contents(__DIR__ . '/../imgs/noCover.png');
-            if ($content === false) {
-                $this->LogDebug(__FUNCTION__, 'Placeholder image imgs/noCover.png is missing.');
-                return;
-            }
-        }
-
-        $mediaID = @IPS_GetObjectIDByIdent('Cover', $this->InstanceID);
-        if ($mediaID === false) {
-            $this->LogDebug(__FUNCTION__, 'Media object not found for cover: ' . $coverUrl);
-            return;
-        }
-
-        IPS_SetMediaContent($mediaID, base64_encode($content));
-        IPS_SendMediaEvent($mediaID);
-
-        $this->WriteAttributeString('LastTrackKey', $trackKey);
+        $this->CreateCoverMedia(5);
     }
 }

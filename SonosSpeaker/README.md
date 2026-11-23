@@ -3,7 +3,7 @@
 [![Home](https://img.shields.io/badge/Home-wilkware.de-0b1830.svg?style=flat-square)](https://wilkware.de/module/sonos/)
 [![Version](https://img.shields.io/badge/Symcon-PHP--Modul-red.svg?style=flat-square)](https://www.symcon.de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/)
 [![Product](https://img.shields.io/badge/Symcon%20Version-8.1-blue.svg?style=flat-square)](https://www.symcon.de/produkt/)
-[![Version](https://img.shields.io/badge/Modul%20Version-1.0.20261012-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
+[![Version](https://img.shields.io/badge/Modul%20Version-1.1.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg?style=flat-square)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Actions](https://img.shields.io/github/actions/workflow/status/wilkware/SonosUPnP/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Wilkware/SonosUPnP/actions)
 
@@ -29,6 +29,7 @@ Das Modul steuert einen einzelnen Sonos-Lautsprecher über die lokale UPnP-Schni
 * Anzeige von Interpret, Titel und Album bzw. Sendername - auch bei Radiostreams, die den aktuellen Titel nur im Stream mitliefern.
 * Cover des aktuellen Titels; ersatzweise das Senderlogo aus der Senderliste oder ein Platzhalterbild.
 * Werbe-Einblendungen mancher Radiostreams (Tracking-Adressen statt Titel) werden erkannt und nicht angezeigt.
+* Gruppenfähig wie in der Sonos-App: Ist der Lautsprecher Mitglied einer Sonos-Gruppe, werden Titelinformationen und Cover vom Gruppenkoordinator übernommen. Für jeden Lautsprecher in einer Gruppe mit mehreren Lautsprechern (auch den Gruppenkoordinator) gilt: Spielt die Gruppe gerade, wird die Wiedergabesteuerung am Lautsprecher nicht ausgeführt, sondern ein Hinweis angezeigt, die Gruppe über die _Sonos Gruppe_ zu bedienen. Spielt die Gruppe nicht, verlassen Play und Senderwahl die Gruppe und der Lautsprecher spielt allein (bei Play mit der letzten Quelle der Gruppe, sofern es sich um einen Radiostream o. ä. handelt). Lautstärke und Stumm wirken immer nur auf diesen Lautsprecher.
 * Zyklische Abfrage des Wiedergabestatus.
 * Erkennung nicht erreichbarer Lautsprecher mit automatischer Wiederaufnahme, sobald der Lautsprecher wieder antwortet (siehe [Statusvariablen](#user-content-5-statusvariablen)).
 
@@ -58,6 +59,7 @@ Einstellungsbereich:
 Name                               | Beschreibung
 ---------------------------------- | -----------------------------------------------------------------
 Aktualisierungsintervall           | Zeitspanne in Sekunden für die Abfrage des Wiedergabestatus (5..60s, Standard 10s)
+Nicht erreichbar als Fehler melden | Aktiviert (Standard): ein nicht erreichbarer Lautsprecher wird als Fehler (201) gemeldet. Deaktiviert: Status inaktiv (104), kein Fehler, z.B. für absichtlich vom Strom getrennte Lautsprecher
 
 > 📻 Senderliste ...
 
@@ -92,7 +94,9 @@ Playlist | Sender       | String  | Auswahl des Radiosenders aus der Senderliste
 
 _Hinweis:_ Zusätzlich wird ein Medienobjekt 'Cover' (Ident `Cover`) für das Cover des aktuellen Titels angelegt.
 
-_Erreichbarkeit:_ Antwortet der Lautsprecher nicht (ausgeschaltet, neue IP-Adresse), wechselt die Instanz in den Status _Lautsprecher nicht erreichbar_ (201), die Wiedergabe wird als gestoppt angezeigt und nur noch alle 30 Sekunden abgefragt. Die Bridge sucht dann automatisch nach einer geänderten IP-Adresse. Sobald der Lautsprecher wieder antwortet, wird die Instanz automatisch wieder aktiv.
+_Status:_ Ist kein Lautsprecher ausgewählt (Instanz manuell ohne Konfigurator angelegt), steht die Instanz auf _Kein Lautsprecher ausgewählt_ (202). Es wird dann nichts abgefragt oder gesteuert.
+
+_Erreichbarkeit:_ Antwortet der Lautsprecher nicht (ausgeschaltet, neue IP-Adresse), wechselt die Instanz in den Status _Lautsprecher nicht erreichbar_ (201, Fehler) bzw. bei deaktivierter Option _Nicht erreichbar als Fehler melden_ in _Lautsprecher nicht erreichbar (ausgeschaltet)_ (104, inaktiv, kein Fehler), die Wiedergabe wird als gestoppt angezeigt und nur noch alle 30 Sekunden abgefragt. Die Bridge sucht dann automatisch nach einer geänderten IP-Adresse. Sobald der Lautsprecher wieder antwortet, wird die Instanz automatisch wieder aktiv.
 
 ### 6. Darstellungen
 
@@ -132,6 +136,14 @@ RequestAction(IPS_GetObjectIDByIdent('Playlist', 12345), 0);
 ```
 
 ### 9. Versionshistorie
+
+v1.1.20261123
+
+* _NEU_: Gruppenfähig wie in der Sonos-App (Hinweis bei spielender Gruppe, Solo-Wiedergabe bei ruhender Gruppe, Titelinformationen und Cover vom Gruppenkoordinator)
+* _NEU_: Option _Nicht erreichbar als Fehler melden_ - abschaltbar für absichtlich vom Strom getrennte Lautsprecher (Status inaktiv statt Fehler)
+* _NEU_: Ohne ausgewählten Lautsprecher steht die Instanz auf Fehler (202) statt inaktiv
+* _FIX_: Fehlermeldungen (SOAP-Faults) der Lautsprecher werden korrekt erkannt und protokolliert
+* _FIX_: Cover neu angelegter Lautsprecher war bis zum ersten Titel als fehlerhaft (Datei nicht vorhanden) gekennzeichnet
 
 v1.0.20261012
 

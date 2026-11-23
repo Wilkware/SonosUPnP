@@ -20,6 +20,9 @@ Folgende Module beinhaltet diese Bibliothek:
 - __Sonos Lautsprecher__ ([Dokumentation](SonosSpeaker))  
     Steuerung eines einzelnen Lautsprechers (Wiedergabe, Lautstärke, Stumm, Radiosender) inklusive Anzeige von Titel, Interpret, Album und Cover.
 
+- __Sonos Gruppe__ ([Dokumentation](SonosGroup))  
+    Steuerung einer festen Gruppe aus mehreren Lautsprechern: Wiedergabe und Sender gehen an den Gruppenkoordinator, fehlende Mitglieder werden beim Abspielen wieder aufgenommen; Titel, Interpret, Album, Cover und Mitglieder werden angezeigt.
+
 ## 🪧 Voraussetzung
 
 * __UPnP in der Sonos-App aktiviert__  
@@ -30,8 +33,20 @@ Folgende Module beinhaltet diese Bibliothek:
 * __Docker__  
     Läuft Symcon in einem Container, ist das Host-Netzwerk (`network_mode: host`) notwendig, da Multicast sonst nicht durchgereicht wird.
 
+## 🧭 Welches Modul passt?
+
+Im Store gibt es mit dem Modul _Sonos_ von Kugelberg bereits eine sehr umfangreiche Lösung, die ebenfalls die lokale UPnP-Schnittstelle nutzt.
+Diese Bibliothek ist eine eigenständige Neuentwicklung mit anderem Schwerpunkt:
+
+* __Schlank:__ Wiedergabe, Lautstärke, Stumm, Radiosender, Titelinformationen, Cover und feste Gruppen - nicht mehr, aber auch nicht weniger.
+* __Aktuelle Basis:__ ab Symcon 8.1, ausschließlich Standardprofile und damit direkt in der Kachel-Visualisierung nutzbar.
+* __Robust im Alltag:__ Zuordnung der Lautsprecher über ihre UUID, automatische Erkennung geänderter IP-Adressen und Kennzeichnung nicht erreichbarer Lautsprecher.
+
+Wer Gruppen zur Laufzeit flexibel zusammenstellen möchte, erweiterte Klangeinstellungen oder Sonos-Playlists benötigt, ist mit dem Modul von Kugelberg besser bedient.
+
 ## 📜 Historie
 
+- 2026-11-23: Neues Modul *Sonos Gruppe*, *Sonos Lautsprecher* gruppenfähig, Option _Nicht erreichbar als Fehler melden_ (absichtlich ausgeschaltete Lautsprecher als inaktiv statt Fehler), Fehlerbehebungen (SOAP-Fehlererkennung, fehlerhaft gekennzeichnetes Cover)
 - 2026-10-12: Initialversion mit den Modulen *Sonos Bridge*, *Sonos Konfigurator* und *Sonos Lautsprecher*
 
 ## 👨‍💻 Entwickler

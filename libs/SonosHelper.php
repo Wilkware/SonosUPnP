@@ -202,6 +202,98 @@ trait SonosHelper
         }
     }
 
+    /**
+     * Retrieves the current source (transport URI and metadata) of a player.
+     *
+     * @param string $ip IP address of the Sonos player
+     *
+     * @return array{uri:string,metadata:string}|false Current source, or false if the SOAP call failed
+     */
+    private function GetPlayerMediaInfo(string $ip): array|false
+    {
+        try {
+            return (new \Wilkware\SonosUPnP\SonosSoapClient($ip))->getMediaInfo();
+        } catch (\Wilkware\SonosUPnP\SonosSoapException $e) {
+            $this->LogDebug(__FUNCTION__, $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Sets the transport URI of a player without starting playback.
+     *
+     * @param string $ip       IP address of the Sonos player
+     * @param string $uri      Transport URI
+     * @param string $metadata DIDL-Lite metadata (unescaped), may be empty
+     *
+     * @return bool true on success, false if the SOAP call failed
+     */
+    private function SetPlayerUri(string $ip, string $uri, string $metadata): bool
+    {
+        try {
+            (new \Wilkware\SonosUPnP\SonosSoapClient($ip))->setUri($uri, $metadata);
+            return true;
+        } catch (\Wilkware\SonosUPnP\SonosSoapException $e) {
+            $this->LogDebug(__FUNCTION__, $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Lets a player join the group of the given coordinator.
+     *
+     * @param string $ip              IP address of the joining player
+     * @param string $coordinatorUuid UUID of the group coordinator
+     *
+     * @return bool true on success, false if the SOAP call failed
+     */
+    private function JoinPlayerGroup(string $ip, string $coordinatorUuid): bool
+    {
+        try {
+            (new \Wilkware\SonosUPnP\SonosSoapClient($ip))->joinGroup($coordinatorUuid);
+            return true;
+        } catch (\Wilkware\SonosUPnP\SonosSoapException $e) {
+            $this->LogDebug(__FUNCTION__, $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Lets a player leave its current group, it then plays on its own.
+     *
+     * @param string $ip IP address of the leaving player
+     *
+     * @return bool true on success, false if the SOAP call failed
+     */
+    private function LeavePlayerGroup(string $ip): bool
+    {
+        try {
+            (new \Wilkware\SonosUPnP\SonosSoapClient($ip))->leaveGroup();
+            return true;
+        } catch (\Wilkware\SonosUPnP\SonosSoapException $e) {
+            $this->LogDebug(__FUNCTION__, $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Retrieves the current group structure of the whole Sonos system.
+     * Every player knows the complete topology, so any reachable one will do.
+     *
+     * @param string $ip IP address of any Sonos player
+     *
+     * @return array<int,array{coordinator:string,members:array<int,array{uuid:string,zoneName:string,ip:string}>}>|false
+     *         List of groups, or false if the SOAP call failed
+     */
+    private function GetZoneGroups(string $ip): array|false
+    {
+        try {
+            return (new \Wilkware\SonosUPnP\SonosSoapClient($ip))->getZoneGroupState();
+        } catch (\Wilkware\SonosUPnP\SonosSoapException $e) {
+            $this->LogDebug(__FUNCTION__, $e->getMessage());
+            return false;
+        }
+    }
 }
 
 /**
@@ -456,9 +548,10 @@ class SonosSoapException extends \RuntimeException
 /**
  * SonosSoapClient
  *
- * Pure UPnP/SOAP client for the two Sonos services needed for playback
- * control: AVTransport (play/pause/skip/queue a URI) and RenderingControl
- * (volume/mute). Knows nothing about IPSModule - only builds SOAP
+ * Pure UPnP/SOAP client for the Sonos services needed for playback
+ * control: AVTransport (play/pause/skip/queue a URI), RenderingControl
+ * (volume/mute) and ZoneGroupTopology (group structure).
+ * Knows nothing about IPSModule - only builds SOAP
  * envelopes, sends them via HTTP POST and parses the XML response.
  */
 class SonosSoapClient
@@ -473,6 +566,12 @@ class SonosSoapClient
     private const SERVICE_RENDERING = [
         'type'       => 'urn:schemas-upnp-org:service:RenderingControl:1',
         'controlUrl' => '/MediaRenderer/RenderingControl/Control'
+    ];
+
+    /** @var array{type: string, controlUrl: string} ZoneGroupTopology service definition */
+    private const SERVICE_ZONE_TOPOLOGY = [
+        'type'       => 'urn:schemas-upnp-org:service:ZoneGroupTopology:1',
+        'controlUrl' => '/ZoneGroupTopology/Control'
     ];
 
     /**
@@ -660,6 +759,83 @@ class SonosSoapClient
     }
 
     /**
+     * Retrieves the current source of the transport.
+     *
+     * @throws SonosSoapException if the SOAP call fails
+     *
+     * @return array{uri:string,metadata:string} Transport URI and DIDL-Lite metadata (empty if not available)
+     */
+    public function getMediaInfo(): array
+    {
+        $result = $this->callAvTransport('GetMediaInfo', []);
+        $metadata = $result['CurrentURIMetaData'] ?? '';
+
+        return [
+            'uri'      => $result['CurrentURI'] ?? '',
+            'metadata' => $metadata === 'NOT_IMPLEMENTED' ? '' : $metadata
+        ];
+    }
+
+    /**
+     * Sets the transport URI without starting playback.
+     *
+     * @param string $uri      Transport URI
+     * @param string $metadata DIDL-Lite metadata (unescaped), may be empty
+     *
+     * @throws SonosSoapException if the SOAP call fails
+     *
+     * @return void
+     */
+    public function setUri(string $uri, string $metadata): void
+    {
+        $this->callAvTransport('SetAVTransportURI', [
+            'CurrentURI'         => $uri,
+            'CurrentURIMetaData' => $metadata
+        ]);
+    }
+
+    /**
+     * Joins the group of the given coordinator (same as ticking the room in the Sonos app).
+     *
+     * @param string $coordinatorUuid UUID of the group coordinator
+     *
+     * @throws SonosSoapException if the SOAP call fails
+     *
+     * @return void
+     */
+    public function joinGroup(string $coordinatorUuid): void
+    {
+        $this->setUri('x-rincon:' . $coordinatorUuid, '');
+    }
+
+    /**
+     * Leaves the current group (same as removing the room from playback in the Sonos app).
+     *
+     * @throws SonosSoapException if the SOAP call fails
+     *
+     * @return void
+     */
+    public function leaveGroup(): void
+    {
+        $this->callAvTransport('BecomeCoordinatorOfStandaloneGroup', []);
+    }
+
+    /**
+     * Retrieves the group structure (zone groups with coordinator and
+     * visible members) of the whole Sonos system.
+     *
+     * @throws SonosSoapException if the SOAP call fails or returns no topology
+     *
+     * @return array<int,array{coordinator:string,members:array<int,array{uuid:string,zoneName:string,ip:string}>}>
+     */
+    public function getZoneGroupState(): array
+    {
+        // GetZoneGroupState is not instance based, so no InstanceID argument
+        $result = $this->call(self::SERVICE_ZONE_TOPOLOGY, 'GetZoneGroupState', [], false);
+        return $this->parseZoneGroupState($result['ZoneGroupState'] ?? '');
+    }
+
+    /**
      * Calls the AVTransport service.
      *
      * @param string $action SOAP action to call
@@ -691,13 +867,16 @@ class SonosSoapClient
      * @param array{type:string,controlUrl:string} $service Service definition (type and control URL)
      * @param string $action SOAP action to call
      * @param array<string,string> $params Parameters for the SOAP action
+     * @param bool $withInstanceId Prepend the InstanceID argument (AVTransport/RenderingControl)
      *
      * @return array<string,string> Flattened response arguments
      */
-    private function call(array $service, string $action, array $params): array
+    private function call(array $service, string $action, array $params, bool $withInstanceId = true): array
     {
         // InstanceID is required by every AVTransport/RenderingControl action
-        $params = array_merge(['InstanceID' => '0'], $params);
+        if ($withInstanceId) {
+            $params = array_merge(['InstanceID' => '0'], $params);
+        }
 
         $argsXml = '';
         foreach ($params as $key => $value) {
@@ -740,15 +919,24 @@ class SonosSoapClient
             throw new SonosSoapException(sprintf('SOAP call %s to %s returned invalid XML.', $action, $this->ip));
         }
 
-        $body = $doc->children('http://schemas.xmlsoap.org/soap/envelope/')->Body;
-        $fault = $body->children('http://schemas.xmlsoap.org/soap/envelope/')->Fault ?? null;
+        $body = $doc->children('http://schemas.xmlsoap.org/soap/envelope/')->Body ?? null;
+        if ($body === null) {
+            throw new SonosSoapException(sprintf('SOAP call %s to %s returned no SOAP body: %s', $action, $this->ip, $this->shorten($response)));
+        }
 
-        if ($fault !== null && (string) $fault->faultcode !== '') {
+        $fault = $body->children('http://schemas.xmlsoap.org/soap/envelope/')->Fault ?? null;
+        if ($fault !== null) {
+            // <s:Fault> is namespaced, but its children (faultcode, faultstring, detail) are not
+            $faultData = $fault->children();
+            // Sonos usually only sends the numeric UPnP error code (e.g. 701 = transition not available,
+            // 800 = command not allowed for a group member); UPnPError has its own default namespace
+            $upnpError = $faultData->detail?->children('urn:schemas-upnp-org:control-1-0')->UPnPError ?? null;
             throw new SonosSoapException(sprintf(
-                'SOAP call %s to %s returned a fault: %s',
+                'SOAP call %s to %s returned a fault: %s (UPnP error %s)',
                 $action,
                 $this->ip,
-                (string) ($fault->detail->UPnPError->errorDescription ?? $fault->faultstring ?? 'unknown')
+                (string) ($upnpError->errorDescription ?? $faultData->faultstring ?? 'unknown'),
+                (string) ($upnpError->errorCode ?? '?')
             ));
         }
 
@@ -757,7 +945,10 @@ class SonosSoapClient
         // (CurrentTransportState, etc.) have no namespace of their own -
         // so we must navigate into the service namespace explicitly first,
         // then iterate children() without a namespace filter.
-        $responseElement = $body->children($service['type'])->{$action . 'Response'};
+        $responseElement = $body->children($service['type'])->{$action . 'Response'} ?? null;
+        if ($responseElement === null) {
+            throw new SonosSoapException(sprintf('SOAP call %s to %s returned no %sResponse: %s', $action, $this->ip, $action, $this->shorten($response)));
+        }
 
         $result = [];
         foreach ($responseElement->children() as $key => $value) {
@@ -765,6 +956,18 @@ class SonosSoapClient
         }
 
         return $result;
+    }
+
+    /**
+     * Shortens a raw response for error messages.
+     *
+     * @param string $response Raw HTTP response body
+     *
+     * @return string At most 300 characters of the response
+     */
+    private function shorten(string $response): string
+    {
+        return mb_strimwidth(trim($response), 0, 300, '...');
     }
 
     /**
@@ -847,6 +1050,57 @@ class SonosSoapClient
             // Album field when the station isn't in the user's own list.
             'stationTitle' => $stationTitle
         ];
+    }
+
+    /**
+     * Parses the ZoneGroupState XML into a list of groups.
+     *
+     * @param string $xml ZoneGroupState XML (already unescaped)
+     *
+     * @throws SonosSoapException if the XML is empty or invalid
+     *
+     * @return array<int,array{coordinator:string,members:array<int,array{uuid:string,zoneName:string,ip:string}>}>
+     */
+    private function parseZoneGroupState(string $xml): array
+    {
+        if ($xml === '') {
+            throw new SonosSoapException(sprintf('GetZoneGroupState on %s returned no topology.', $this->ip));
+        }
+
+        $previous = libxml_use_internal_errors(true);
+        $doc = simplexml_load_string($xml);
+        libxml_use_internal_errors($previous);
+
+        if ($doc === false) {
+            throw new SonosSoapException(sprintf('GetZoneGroupState on %s returned invalid XML.', $this->ip));
+        }
+
+        // Current firmware wraps the groups in <ZoneGroupState><ZoneGroups>, older firmware returns <ZoneGroups> as root
+        $container = $doc->ZoneGroups ?? $doc;
+
+        $groups = [];
+        foreach ($container->ZoneGroup as $zoneGroup) {
+            $members = [];
+            foreach ($zoneGroup->ZoneGroupMember as $member) {
+                // Invisible members are the hidden half of a stereo pair; surrounds and subs
+                // of a home theater are nested <Satellite> elements and never show up here
+                if ((string) $member['Invisible'] === '1') {
+                    continue;
+                }
+                $host = parse_url((string) $member['Location'], PHP_URL_HOST);
+                $members[] = [
+                    'uuid'     => (string) $member['UUID'],
+                    'zoneName' => (string) $member['ZoneName'],
+                    'ip'       => is_string($host) ? $host : ''
+                ];
+            }
+            $groups[] = [
+                'coordinator' => (string) $zoneGroup['Coordinator'],
+                'members'     => $members
+            ];
+        }
+
+        return $groups;
     }
 
     /**
