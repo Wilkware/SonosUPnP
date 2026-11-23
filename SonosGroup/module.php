@@ -505,6 +505,10 @@ class SonosGroup extends IPSModuleStrict
 
         $known = [];
         foreach ($players as $player) {
+            // Hidden stereo pair halves and home theater satellites are part of their visible room
+            if (!($player['visible'] ?? true)) {
+                continue;
+            }
             $options[] = [
                 'caption' => sprintf('%s (%s)', $player['roomName'], $player['modelName']),
                 'value'   => $player['uuid']

@@ -98,6 +98,12 @@ class SonosConfigurator extends IPSModuleStrict
 
         $values = [];
         foreach ($this->GetDiscoveredPlayers() as $player) {
+            // Hidden stereo pair halves and home theater satellites are controlled via their
+            // visible room; still listed if an instance already exists so it stays reachable.
+            $instanceID = $this->FindExistingSpeakerInstance($player['uuid']);
+            if (!($player['visible'] ?? true) && $instanceID === 0) {
+                continue;
+            }
             $values[] = [
                 'name'       => $player['roomName'],
                 'model'      => $player['modelName'],
@@ -107,7 +113,7 @@ class SonosConfigurator extends IPSModuleStrict
                 'serial'     => $player['serialNumber'],
                 'mac'        => $player['macAddress'],
                 'ip'         => $player['ip'],
-                'instanceID' => $this->FindExistingSpeakerInstance($player['uuid']),
+                'instanceID' => $instanceID,
                 'create'     => [
                     'moduleID'      => self::SONOS_SPEAKER_GUID,
                     'configuration' => [
@@ -145,7 +151,7 @@ class SonosConfigurator extends IPSModuleStrict
     /**
      * Returns the list of discovered players from the cache.
      *
-     * @return array<int,array{uuid:string,ip:string,roomName:string,modelName:string,modelGeneration:string,softwareVersion:string,hardwareVersion:string,serialNumber:string,macAddress:string,descriptionUrl:string}>
+     * @return array<int,array{uuid:string,ip:string,roomName:string,modelName:string,modelGeneration:string,softwareVersion:string,hardwareVersion:string,serialNumber:string,macAddress:string,descriptionUrl:string,visible?:bool}>
      */
     private function GetDiscoveredPlayers(): array
     {
@@ -171,7 +177,7 @@ class SonosConfigurator extends IPSModuleStrict
             }
         }
 
-        return 1;
+        return 0;
     }
 
     /**

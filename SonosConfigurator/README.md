@@ -3,7 +3,7 @@
 [![Home](https://img.shields.io/badge/Home-wilkware.de-0b1830.svg?style=flat-square)](https://wilkware.de/module/sonos/)
 [![Version](https://img.shields.io/badge/Symcon-PHP--Modul-red.svg?style=flat-square)](https://www.symcon.de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/)
 [![Product](https://img.shields.io/badge/Symcon%20Version-8.1-blue.svg?style=flat-square)](https://www.symcon.de/produkt/)
-[![Version](https://img.shields.io/badge/Modul%20Version-1.1.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
+[![Version](https://img.shields.io/badge/Modul%20Version-1.2.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg?style=flat-square)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Actions](https://img.shields.io/github/actions/workflow/status/wilkware/SonosUPnP/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Wilkware/SonosUPnP/actions)
 
@@ -26,6 +26,7 @@ Der Konfigurator listet alle von der _Sonos Bridge_ gefundenen Lautsprecher auf 
 * Übersicht aller im Netzwerk gefundenen Sonos-Lautsprecher mit Raumname, Modell, Generation, Software-/Hardware-Version, Seriennummer, MAC- und IP-Adresse.
 * Anlegen einer _Sonos Lautsprecher_-Instanz per Klick, vorkonfiguriert mit UUID und Raumname.
 * Bereits vorhandene Instanzen werden erkannt und in der Liste zugeordnet (Prüfen statt doppelt Anlegen).
+* Es werden nur Räume aufgeführt, wie sie auch die Sonos-App zeigt: Stereopaare und Heimkino-Sets (Soundbar mit Surround-Lautsprechern/Sub) erscheinen als ein Eintrag, andere UPnP-Geräte im Netz werden ignoriert.
 
 ### 2. Voraussetzungen
 
@@ -81,6 +82,12 @@ Der Konfigurator hat keine Darstellung in der Visualisierung.
 Das Modul stellt keine direkten Funktionsaufrufe zur Verfügung.
 
 ### 9. Versionshistorie
+
+v1.2.20261123
+
+* _FIX_: Stereopaare und Heimkino-Satelliten werden nicht mehr als Einzelgeräte gelistet
+* _FIX_: Fremde UPnP-Geräte (z. B. Hue Bridge) werden nicht mehr als Lautsprecher gelistet
+* _FIX_: Nicht angelegte Lautsprecher wurden fälschlich mit einer Instanz verknüpft angezeigt
 
 v1.1.20261123
 

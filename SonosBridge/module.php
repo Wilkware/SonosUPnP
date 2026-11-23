@@ -283,7 +283,8 @@ class SonosBridge extends IPSModuleStrict
                 return;
             }
 
-            $players = $this->MergePlayers($this->GetDiscoveredPlayers(), $found);
+            $cached = $this->GetDiscoveredPlayers();
+            $players = $this->ClassifyPlayers($this->MergePlayers($cached, $found), $cached, $found);
             $this->WriteAttributeString('DiscoveredPlayers', json_encode($players));
         } finally {
             IPS_SemaphoreLeave($semaphore);
@@ -347,6 +348,54 @@ class SonosBridge extends IPSModuleStrict
         }
 
         return array_values($merged);
+    }
+
+    /**
+     * Marks every player as visible or hidden based on the zone group topology.
+     * Only rooms shown in the Sonos app are visible; the hidden half of a stereo
+     * pair, surrounds and subs of a home theater as well as devices missing from
+     * the topology (no Sonos player) are hidden. If the topology cannot be read,
+     * the previous classification is kept.
+     *
+     * @param array<int,array<string,mixed>> $players Merged player list
+     * @param array<int,array<string,mixed>> $cached  Previously cached players (fallback)
+     * @param array<int,array<string,mixed>> $found   Players found by the current scan (queried for the topology)
+     *
+     * @return array<int,array<string,mixed>> Player list with "visible" flag
+     */
+    private function ClassifyPlayers(array $players, array $cached, array $found): array
+    {
+        $visible = null;
+        $previous = [];
+        foreach ($found as $player) {
+            $groups = $this->GetZoneGroups((string) $player['ip']);
+            if ($groups !== false) {
+                $visible = [];
+                foreach ($groups as $group) {
+                    foreach ($group['members'] as $member) {
+                        $visible[$member['uuid']] = true;
+                    }
+                }
+                break;
+            }
+        }
+
+        if ($visible === null) {
+            $this->LogDebug(__FUNCTION__, 'Zone group topology not available, keeping previous classification');
+            $previous = array_column($cached, 'visible', 'uuid');
+        }
+
+        foreach ($players as &$player) {
+            $player['visible'] = $visible !== null
+                ? isset($visible[$player['uuid']])
+                : (bool) ($previous[$player['uuid']] ?? true);
+            if (!$player['visible']) {
+                $this->LogDebug(__FUNCTION__, sprintf('Hidden player %s (%s, %s)', $player['roomName'], $player['modelName'], $player['uuid']));
+            }
+        }
+        unset($player);
+
+        return $players;
     }
 
     /**

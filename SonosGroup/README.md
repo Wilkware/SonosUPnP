@@ -3,7 +3,7 @@
 [![Home](https://img.shields.io/badge/Home-wilkware.de-0b1830.svg?style=flat-square)](https://wilkware.de/module/sonos/)
 [![Version](https://img.shields.io/badge/Symcon-PHP--Modul-red.svg?style=flat-square)](https://www.symcon.de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/)
 [![Product](https://img.shields.io/badge/Symcon%20Version-8.1-blue.svg?style=flat-square)](https://www.symcon.de/produkt/)
-[![Version](https://img.shields.io/badge/Modul%20Version-1.1.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
+[![Version](https://img.shields.io/badge/Modul%20Version-1.2.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg?style=flat-square)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Actions](https://img.shields.io/github/actions/workflow/status/wilkware/SonosUPnP/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Wilkware/SonosUPnP/actions)
 
@@ -139,6 +139,10 @@ RequestAction(IPS_GetObjectIDByIdent('Playlist', 12345), 0);
 ```
 
 ### 9. Versionshistorie
+
+v1.2.20261123
+
+* _FIX_: Lautsprecherauswahl zeigt nur noch Räume wie die Sonos-App (keine Stereo-Partner, Heimkino-Satelliten oder fremden UPnP-Geräte)
 
 v1.1.20261123
 

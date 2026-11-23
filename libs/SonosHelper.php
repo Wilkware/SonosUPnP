@@ -438,6 +438,12 @@ class SsdpClient
                 continue; // Timeout on this reception attempt; continue waiting until endTime
             }
 
+            // Some devices (e.g. Hue Bridge) answer every M-SEARCH regardless of the search target
+            $searchTarget = $this->extractHeader($buffer, 'ST') ?? '';
+            if (stripos($searchTarget, 'ZonePlayer') === false) {
+                continue;
+            }
+
             $location = $this->extractHeader($buffer, 'LOCATION');
             if ($location !== null) {
                 $locations[$location] = $fromIp; // deduplicated by LOCATION-URL
@@ -508,6 +514,10 @@ class SsdpClient
         // <device> elements inside <deviceList> - those must be ignored,
         // which an unqualified "//device" XPath would not reliably do.
         $device = $doc->device;
+
+        if (stripos((string) $device->deviceType, 'ZonePlayer') === false) {
+            return null;
+        }
 
         $udn = (string) $device->UDN;
         if ($udn === '') {
