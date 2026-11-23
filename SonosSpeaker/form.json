@@ -100,31 +100,31 @@
                         {
                             "type": "Button",
                             "caption": "Previous",
-                            "onClick": "IPS_RequestAction($id, 'Playback', 0);",
+                            "onClick": "IPS_RequestAction($id, 'FormPlayback', 0);",
                             "width": "120px"
                         },
                         {
                             "type": "Button",
                             "caption": "Stop",
-                            "onClick": "IPS_RequestAction($id, 'Playback', 1);",
+                            "onClick": "IPS_RequestAction($id, 'FormPlayback', 1);",
                             "width": "120px"
                         },
                         {
                             "type": "Button",
                             "caption": "Play",
-                            "onClick": "IPS_RequestAction($id, 'Playback', 2);",
+                            "onClick": "IPS_RequestAction($id, 'FormPlayback', 2);",
                             "width": "120px"
                         },
                         {
                             "type": "Button",
                             "caption": "Pause",
-                            "onClick": "IPS_RequestAction($id, 'Playback', 3);",
+                            "onClick": "IPS_RequestAction($id, 'FormPlayback', 3);",
                             "width": "120px"
                         },
                         {
                             "type": "Button",
                             "caption": "Next",
-                            "onClick": "IPS_RequestAction($id, 'Playback', 4);",
+                            "onClick": "IPS_RequestAction($id, 'FormPlayback', 4);",
                             "width": "120px"
                         }
                     ]

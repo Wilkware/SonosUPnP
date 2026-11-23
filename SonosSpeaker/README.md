@@ -3,7 +3,7 @@
 [![Home](https://img.shields.io/badge/Home-wilkware.de-0b1830.svg?style=flat-square)](https://wilkware.de/module/sonos/)
 [![Version](https://img.shields.io/badge/Symcon-PHP--Modul-red.svg?style=flat-square)](https://www.symcon.de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/)
 [![Product](https://img.shields.io/badge/Symcon%20Version-8.1-blue.svg?style=flat-square)](https://www.symcon.de/produkt/)
-[![Version](https://img.shields.io/badge/Modul%20Version-1.6.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
+[![Version](https://img.shields.io/badge/Modul%20Version-1.7.20261123-orange.svg?style=flat-square)](https://github.com/Wilkware/SonosUPnP)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg?style=flat-square)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Actions](https://img.shields.io/github/actions/workflow/status/wilkware/SonosUPnP/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/Wilkware/SonosUPnP/actions)
 
@@ -29,7 +29,7 @@ Das Modul steuert einen einzelnen Sonos-Lautsprecher über die lokale UPnP-Schni
 * Anzeige von Interpret, Titel und Album bzw. Sendername - auch bei Radiostreams, die den aktuellen Titel nur im Stream mitliefern.
 * Cover des aktuellen Titels; ersatzweise das Senderlogo aus der Senderliste oder ein Platzhalterbild.
 * Werbe-Einblendungen mancher Radiostreams (Tracking-Adressen statt Titel) werden erkannt und nicht angezeigt.
-* Gruppenfähig wie in der Sonos-App: Ist der Lautsprecher Mitglied einer Sonos-Gruppe, werden Titelinformationen und Cover vom Gruppenkoordinator übernommen. Für jeden Lautsprecher in einer Gruppe mit mehreren Lautsprechern (auch den Gruppenkoordinator) gilt: Spielt die Gruppe gerade, wird die Wiedergabesteuerung am Lautsprecher nicht ausgeführt, sondern ein Hinweis angezeigt, die Gruppe über die _Sonos Gruppe_ zu bedienen. Spielt die Gruppe nicht, verlassen Play und Senderwahl die Gruppe und der Lautsprecher spielt allein (bei Play mit der letzten Quelle der Gruppe, sofern es sich um einen Radiostream o. ä. handelt). Lautstärke und Stumm wirken immer nur auf diesen Lautsprecher.
+* Gruppenfähig wie in der Sonos-App: Ist der Lautsprecher Mitglied einer Sonos-Gruppe, werden Titelinformationen und Cover vom Gruppenkoordinator übernommen. Für jeden Lautsprecher in einer Gruppe mit mehreren Lautsprechern (auch den Gruppenkoordinator) gilt: Spielt die Gruppe gerade, wird die Wiedergabesteuerung am Lautsprecher nicht ausgeführt, sondern ein Hinweis angezeigt, die Gruppe über die _Sonos Gruppe_ zu bedienen (in der Visualisierung als Meldung, bei den Test-Buttons im Konfigurationsformular als Popup). Spielt die Gruppe nicht, verlassen Play und Senderwahl die Gruppe und der Lautsprecher spielt allein (bei Play mit der letzten Quelle der Gruppe, sofern es sich um einen Radiostream o. ä. handelt). Lautstärke und Stumm wirken immer nur auf diesen Lautsprecher.
 * Zyklische Abfrage des Wiedergabestatus.
 * Erkennung nicht erreichbarer Lautsprecher mit automatischer Wiederaufnahme, sobald der Lautsprecher wieder antwortet (siehe [Statusvariablen](#user-content-5-statusvariablen)).
 
@@ -140,6 +140,10 @@ RequestAction(IPS_GetObjectIDByIdent('Playlist', 12345), 'NDR 2');
 Der Senderwechsel funktioniert genauso über die Aktion _Auf Wert schalten_ (z. B. in Ablaufplänen oder Ereignissen) mit der Variable _Sender_ und dem Sendernamen oder der Nummer als Wert.
 
 ### 9. Versionshistorie
+
+v1.7.20261123
+
+* _FIX_: Hinweis bei spielender Gruppe erscheint bei den Test-Buttons im Konfigurationsformular als Popup statt als Warnung mit Zeilenangabe
 
 v1.6.20261123
 

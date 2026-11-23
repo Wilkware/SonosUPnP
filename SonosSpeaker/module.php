@@ -228,7 +228,9 @@ class SonosSpeaker extends IPSModuleStrict
 
         switch ($ident) {
             case 'Playback':
-                if (!$this->HandleGroupMemberAction($ident, (int) $value)) {
+            case 'FormPlayback':
+                // FormPlayback = test buttons of the configuration form, hints are shown as popup there
+                if (!$this->HandleGroupMemberAction('Playback', (int) $value, $ident === 'FormPlayback')) {
                     $this->HandlePlaybackAction((int) $value);
                 }
                 break;
@@ -369,12 +371,13 @@ class SonosSpeaker extends IPSModuleStrict
      * coordinator alike (Sonos hands the coordinator role over to a remaining
      * member); a speaker playing on its own is not affected.
      *
-     * @param string $ident Ident of the action (Playback or Playlist)
-     * @param int    $value Playback command or station index
+     * @param string $ident    Ident of the action (Playback or Playlist)
+     * @param int    $value    Playback command or station index
+     * @param bool   $fromForm Triggered from the configuration form (hint as popup instead of echo)
      *
      * @return bool True if the action was handled (or rejected) here, false if the regular handler should run
      */
-    private function HandleGroupMemberAction(string $ident, int $value): bool
+    private function HandleGroupMemberAction(string $ident, int $value, bool $fromForm = false): bool
     {
         $ip = $this->ResolvePlayerIp();
         if ($ip === null) {
@@ -390,7 +393,13 @@ class SonosSpeaker extends IPSModuleStrict
         $groupInfo = $this->GetPlayerTrackInfo($group['ip']);
         if ($groupInfo !== false && in_array($groupInfo['state'], ['PLAYING', 'TRANSITIONING'], true)) {
             $this->LogDebug(__FUNCTION__, 'Group is playing, action rejected.');
-            echo $this->Translate('This speaker belongs to a playing group, please use the Sonos Group instance.');
+            $hint = $this->Translate('This speaker belongs to a playing group, please use the Sonos Group instance.');
+            if ($fromForm) {
+                $this->EchoMessage($hint);
+            } else {
+                // The visualization shows the output of RequestAction as message
+                echo $hint;
+            }
             return true;
         }
 
