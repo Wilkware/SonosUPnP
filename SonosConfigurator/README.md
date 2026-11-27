@@ -83,6 +83,10 @@ Das Modul stellt keine direkten Funktionsaufrufe zur Verfügung.
 
 ### 9. Versionshistorie
 
+v1.8.20261127
+
+* _NEU_: Versionsangleich an die Bibliothek, keine funktionalen Änderungen
+
 v1.7.20261123
 
 * _NEU_: Versionsangleich an die Bibliothek, keine funktionalen Änderungen

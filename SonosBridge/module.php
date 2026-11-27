@@ -233,7 +233,7 @@ class SonosBridge extends IPSModuleStrict
      *
      * @param string $uuid The UUID of the player for which to retrieve the IP address
      *
-     * @throws \RuntimeException if the UUID is unknown (an asynchronous rescan is requested)
+     * @throws \RuntimeException if the UUID is unknown (an asynchronous rescan is requested once per UUID)
      *
      * @return string The last known IP address of the player
      */
@@ -247,7 +247,16 @@ class SonosBridge extends IPSModuleStrict
 
         // Never scan synchronously here - this runs inside ForwardData for
         // every poll of every speaker and would block PHP threads.
-        $this->RequestScan();
+        // Only one on-demand scan per unknown UUID: a speaker that stays powered off
+        // would otherwise keep the bridge scanning every minute. The periodic scan
+        // finds it again once it is back.
+        $requested = json_decode($this->GetBuffer('UnknownRequested'), true);
+        $requested = is_array($requested) ? $requested : [];
+        if (!in_array($uuid, $requested, true)) {
+            $requested[] = $uuid;
+            $this->SetBuffer('UnknownRequested', json_encode($requested));
+            $this->RequestScan();
+        }
 
         throw new \RuntimeException(sprintf('Sonos speaker with UUID %s was not found on the network.', $uuid));
     }
@@ -286,6 +295,13 @@ class SonosBridge extends IPSModuleStrict
             $cached = $this->GetDiscoveredPlayers();
             $players = $this->ClassifyPlayers($this->MergePlayers($cached, $found), $cached, $found);
             $this->WriteAttributeString('DiscoveredPlayers', json_encode($players));
+
+            // Known again: a later disappearance may trigger an on-demand scan once more
+            $requested = json_decode($this->GetBuffer('UnknownRequested'), true);
+            if (is_array($requested) && count($requested) > 0) {
+                $known = array_column($players, 'uuid');
+                $this->SetBuffer('UnknownRequested', json_encode(array_values(array_diff($requested, $known))));
+            }
         } finally {
             IPS_SemaphoreLeave($semaphore);
         }

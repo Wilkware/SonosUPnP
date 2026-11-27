@@ -27,7 +27,7 @@ Die Bridge ist die zentrale Instanz der Bibliothek. Sie erkennt die Sonos-Lautsp
 * Auslesen der Gerätedaten (Raumname, Modell, Generation, Software-/Hardware-Version, Seriennummer, MAC- und IP-Adresse).
 * Zuordnung der Lautsprecher über ihre eindeutige ID (UUID) statt über die IP-Adresse - per DHCP geänderte Adressen werden automatisch erkannt.
 * Regelmäßige Netzwerksuche alle 5 Minuten sowie kurz nach dem Start von Symcon.
-* Sofortige, zeitlich begrenzte Neusuche, sobald ein Lautsprecher unter seiner bekannten Adresse nicht antwortet.
+* Sofortige, zeitlich begrenzte Neusuche, sobald ein Lautsprecher unter seiner bekannten Adresse nicht mehr antwortet (einmalig beim Ausfall; bleibt er aus, z. B. stromlos, findet ihn die regelmäßige Suche wieder).
 * Lautsprecher, die vorübergehend nicht antworten (z. B. ausgeschaltet), bleiben 24 Stunden bekannt.
 * Verwaltung einer globalen Senderliste (Internetradio), die von allen Lautsprecher-Instanzen genutzt wird, sofern diese keine eigene Liste haben.
 
@@ -102,6 +102,10 @@ $ip = WWXSU_GetPlayerIP(12345, 'RINCON_000E58xxxxxx01400');
 ```
 
 ### 9. Versionshistorie
+
+v1.8.20261127
+
+* _FIX_: Ein dauerhaft ausgeschalteter Lautsprecher löst nur noch einmalig eine sofortige Neusuche aus statt jede Minute; wieder eingeschaltet findet ihn die regelmäßige Suche
 
 v1.7.20261123
 

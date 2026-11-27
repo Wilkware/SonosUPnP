@@ -41,6 +41,11 @@ trait PlayerHelper
     private const PLAYBACK_PAUSE = 3;
     private const PLAYBACK_NEXT = 4;
 
+    // Values of the ResetDisplay property
+    private const RESET_DISPLAY_NEVER = 0;
+    private const RESET_DISPLAY_STOP = 1;
+    private const RESET_DISPLAY_STOP_PAUSE = 2;
+
     /** @var int Default interval for updating the playback status (in seconds) */
     private const DEFAULT_UPDATE_INTERVAL = 10;
 
@@ -114,6 +119,16 @@ trait PlayerHelper
             $this->SetValueInteger('Playback', $playback);
         }
 
+        // On Stop and Pause Sonos keeps the last source loaded and still reports its metadata,
+        // like the Sonos app. Optionally the display is reset instead (property ResetDisplay).
+        $resetDisplay = $this->ReadPropertyInteger('ResetDisplay');
+        $effectivePlayback = $playback ?? $this->GetValue('Playback');
+        if (($effectivePlayback === self::PLAYBACK_STOP && $resetDisplay >= self::RESET_DISPLAY_STOP)
+            || ($effectivePlayback === self::PLAYBACK_PAUSE && $resetDisplay >= self::RESET_DISPLAY_STOP_PAUSE)) {
+            $this->ResetTrackVariables();
+            return;
+        }
+
         // Highlight the playing station in the station list, none if something else is playing
         // A station stored as playlist (.m3u/.pls) is only found via the media URI,
         // the track URI is the stream Sonos resolved from it
@@ -165,6 +180,22 @@ trait PlayerHelper
         // an album art URL on the speaker, which only delivers a generic image or none at all.
         $coverUrls = array_values(array_filter([$matchedStation['IconURL'] ?? '', $trackInfo['coverUrl']], fn (string $url): bool => $url !== ''));
         $this->UpdateCover($coverUrls, $trackKey);
+    }
+
+    /**
+     * Clears Artist, Title and Album, removes the station highlight and
+     * shows the placeholder cover - used when playback is stopped or
+     * paused and the ResetDisplay option asks for it.
+     *
+     * @return void
+     */
+    private function ResetTrackVariables(): void
+    {
+        $this->UpdatePlaylistCurrent(-1);
+        $this->SetValueString('Artist', '');
+        $this->SetValueString('Title', '');
+        $this->SetValueString('Album', '');
+        $this->UpdateCover([], 'STOPPED');
     }
 
     /**
@@ -404,11 +435,18 @@ trait PlayerHelper
     /**
      * Tells the bridge that the cached IP did not answer, so it can
      * schedule a (rate limited) rescan to pick up a changed DHCP address.
+     * Only reported on the transition to unreachable: a speaker that is
+     * intentionally powered off would otherwise keep the bridge scanning
+     * every minute. Afterwards the regular periodic scan finds it again.
      *
      * @return void
      */
     private function ReportUnreachable(): void
     {
+        if ($this->IsOffline()) {
+            return;
+        }
+
         $this->SendDataToParent(json_encode([
             'DataID'   => self::SONOS_BRIDGE_GUID,
             'Endpoint' => 'playerUnreachable',

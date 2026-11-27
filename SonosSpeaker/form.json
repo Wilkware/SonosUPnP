@@ -37,11 +37,6 @@
                     "maximum": 60,
                     "minimum": 5,
                     "value": 5
-                },
-                {
-                    "type": "CheckBox",
-                    "name": "OfflineAsError",
-                    "caption": "Report unreachable speaker as error (disable for speakers that are intentionally powered off)"
                 }
             ]
         },
@@ -83,6 +78,37 @@
                             "edit": {
                                 "type": "ValidationTextBox"
                             }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "caption": "⚙️ Advanced settings ...",
+            "items": [
+                {
+                    "type": "CheckBox",
+                    "name": "OfflineAsError",
+                    "caption": "Report unreachable speaker as error (disable for speakers that are intentionally powered off)"
+                },
+                {
+                    "type": "Select",
+                    "name": "ResetDisplay",
+                    "caption": "Display on stop/pause",
+                    "width": "400px",
+                    "options": [
+                        {
+                            "caption": "Keep showing the loaded source (like the Sonos app)",
+                            "value": 0
+                        },
+                        {
+                            "caption": "Reset on stop",
+                            "value": 1
+                        },
+                        {
+                            "caption": "Reset on stop and pause",
+                            "value": 2
                         }
                     ]
                 }

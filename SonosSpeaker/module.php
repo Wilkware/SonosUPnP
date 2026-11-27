@@ -74,6 +74,10 @@ class SonosSpeaker extends IPSModuleStrict
         // e.g. for speakers that are intentionally disconnected from power.
         $this->RegisterPropertyBoolean('OfflineAsError', true);
 
+        // Display on Stop/Pause: 0 = keep showing the loaded source (like the Sonos app),
+        // 1 = reset on Stop, 2 = reset on Stop and Pause.
+        $this->RegisterPropertyInteger('ResetDisplay', self::RESET_DISPLAY_NEVER);
+
         // Caches the station list currently shown in the Playlist variable,
         // so RequestAction() can resolve a selected index back to a stream URI.
         $this->RegisterAttributeString('ActiveStations', '[]');

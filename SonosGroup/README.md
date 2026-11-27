@@ -29,6 +29,7 @@ Die Gruppe entspricht den gespeicherten Gruppen der Sonos-App, die über UPnP ni
 * Wiedergabesteuerung (Zurück, Stopp, Play, Pause, Weiter) und Senderauswahl werden immer an den aktuellen Gruppenkoordinator geschickt.
 * Auswahl eines Internetradio-Senders aus der globalen Senderliste der Bridge oder einer eigenen Liste pro Gruppe.
 * Interpret, Titel, Album bzw. Sendername und Cover werden vom Gruppenkoordinator übernommen.
+* Anzeige bei Stopp/Pause wählbar: wie in der Sonos-App die geladene Quelle (Sendername, Titel, Cover bzw. Senderlogo) weiter anzeigen oder die Anzeige bei Stopp bzw. bei Stopp und Pause zurücksetzen (keine Titelinformationen, Platzhalterbild).
 * Anzeige der Gruppenmitglieder (Koordinator zuerst).
 * Play und Senderwahl an der Gruppe holen die weiteren Lautsprecher der Liste, die die Gruppe verlassen haben, automatisch zurück - wie das erneute Anhaken des Raums in der Sonos-App.
 * Gruppenlautstärke und Stummschaltung der ganzen Gruppe - wie der Gruppenregler der Sonos-App: Die Lautstärken der Mitglieder werden im bestehenden Verhältnis angepasst. Die Einzellautstärke bleibt am jeweiligen _Sonos Lautsprecher_ einstellbar.
@@ -67,13 +68,19 @@ Lautsprecher der Gruppe            | Liste der Lautsprecher (Auswahl aus allen L
 Name                               | Beschreibung
 ---------------------------------- | -----------------------------------------------------------------
 Aktualisierungsintervall           | Zeitspanne in Sekunden für die Abfrage von Gruppenstruktur und Wiedergabestatus (5..60s, Standard 10s)
-Nicht erreichbar als Fehler melden | Aktiviert (Standard): eine nicht erreichbare Gruppe wird als Fehler (201) gemeldet. Deaktiviert: Status inaktiv (104), kein Fehler, z.B. für absichtlich vom Strom getrennte Lautsprecher
 
 > 📻 Senderliste ...
 
 Name                               | Beschreibung
 ---------------------------------- | -----------------------------------------------------------------
 Eigene Senderliste                 | Optionale Senderliste nur für diese Gruppe (Name, Stream-URL, Icon-URL). Leer lassen, um die globale Liste der Bridge zu verwenden.
+
+> ⚙️ Erweiterte Einstellungen ...
+
+Name                               | Beschreibung
+---------------------------------- | -----------------------------------------------------------------
+Nicht erreichbar als Fehler melden | Aktiviert (Standard): eine nicht erreichbare Gruppe wird als Fehler (201) gemeldet. Deaktiviert: Status inaktiv (104), kein Fehler, z.B. für absichtlich vom Strom getrennte Lautsprecher
+Anzeige bei Stopp/Pause            | _Geladene Quelle weiter anzeigen_ (Standard, wie die Sonos-App: man sieht, was beim nächsten Play startet), _Bei Stopp zurücksetzen_ oder _Bei Stopp und Pause zurücksetzen_ (Interpret, Titel und Album leer, keine Markierung in der Senderliste, Platzhalterbild als Cover)
 
 _Aktionsbereich:_
 
@@ -147,6 +154,11 @@ RequestAction(IPS_GetObjectIDByIdent('Volume', 12345), 20);
 Der Senderwechsel funktioniert genauso über die Aktion _Auf Wert schalten_ (z. B. in Ablaufplänen oder Ereignissen) mit der Variable _Sender_ und dem Sendernamen oder der Nummer als Wert.
 
 ### 9. Versionshistorie
+
+v1.8.20261127
+
+* _NEU_: Option _Anzeige bei Stopp/Pause_ - Titelinformationen und Cover bei Stopp bzw. bei Stopp und Pause zurücksetzen (Standard: wie die Sonos-App weiter anzeigen)
+* _NEU_: Panel _Erweiterte Einstellungen_ im Konfigurationsformular, _Nicht erreichbar als Fehler melden_ dorthin verschoben
 
 v1.7.20261123
 

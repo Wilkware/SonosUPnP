@@ -46,6 +46,7 @@ Wer Gruppen zur Laufzeit flexibel zusammenstellen möchte, erweiterte Klangeinst
 
 ## 📜 Historie
 
+- 2026-11-27: Option _Anzeige bei Stopp/Pause_ für *Sonos Lautsprecher* und *Sonos Gruppe* (Titel und Cover bei Stopp bzw. Pause zurücksetzen), neues Panel _Erweiterte Einstellungen_, keine minütliche Neusuche mehr bei dauerhaft ausgeschalteten Lautsprechern
 - 2026-11-23: Neues Modul *Sonos Gruppe*, *Sonos Lautsprecher* gruppenfähig, Option _Nicht erreichbar als Fehler melden_ (absichtlich ausgeschaltete Lautsprecher als inaktiv statt Fehler), Fehlerbehebungen (SOAP-Fehlererkennung, fehlerhaft gekennzeichnetes Cover)
 - 2026-10-12: Initialversion mit den Modulen *Sonos Bridge*, *Sonos Konfigurator* und *Sonos Lautsprecher*
 

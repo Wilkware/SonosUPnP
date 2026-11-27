@@ -28,6 +28,7 @@ Das Modul steuert einen einzelnen Sonos-Lautsprecher über die lokale UPnP-Schni
 * Auswahl eines Internetradio-Senders aus der globalen Senderliste der Bridge oder einer eigenen Liste pro Lautsprecher.
 * Anzeige von Interpret, Titel und Album bzw. Sendername - auch bei Radiostreams, die den aktuellen Titel nur im Stream mitliefern.
 * Cover des aktuellen Titels; ersatzweise das Senderlogo aus der Senderliste oder ein Platzhalterbild.
+* Anzeige bei Stopp/Pause wählbar: wie in der Sonos-App die geladene Quelle (Sendername, Titel, Cover bzw. Senderlogo) weiter anzeigen oder die Anzeige bei Stopp bzw. bei Stopp und Pause zurücksetzen (keine Titelinformationen, Platzhalterbild).
 * Werbe-Einblendungen mancher Radiostreams (Tracking-Adressen statt Titel) werden erkannt und nicht angezeigt.
 * Gruppenfähig wie in der Sonos-App: Ist der Lautsprecher Mitglied einer Sonos-Gruppe, werden Titelinformationen und Cover vom Gruppenkoordinator übernommen. Für jeden Lautsprecher in einer Gruppe mit mehreren Lautsprechern (auch den Gruppenkoordinator) gilt: Spielt die Gruppe gerade, wird die Wiedergabesteuerung am Lautsprecher nicht ausgeführt, sondern ein Hinweis angezeigt, die Gruppe über die _Sonos Gruppe_ zu bedienen (in der Visualisierung als Meldung, bei den Test-Buttons im Konfigurationsformular als Popup). Spielt die Gruppe nicht, verlassen Play und Senderwahl die Gruppe und der Lautsprecher spielt allein (bei Play mit der letzten Quelle der Gruppe, sofern es sich um einen Radiostream o. ä. handelt). Lautstärke und Stumm wirken immer nur auf diesen Lautsprecher.
 * Zyklische Abfrage des Wiedergabestatus.
@@ -59,13 +60,19 @@ Einstellungsbereich:
 Name                               | Beschreibung
 ---------------------------------- | -----------------------------------------------------------------
 Aktualisierungsintervall           | Zeitspanne in Sekunden für die Abfrage des Wiedergabestatus (5..60s, Standard 10s)
-Nicht erreichbar als Fehler melden | Aktiviert (Standard): ein nicht erreichbarer Lautsprecher wird als Fehler (201) gemeldet. Deaktiviert: Status inaktiv (104), kein Fehler, z.B. für absichtlich vom Strom getrennte Lautsprecher
 
 > 📻 Senderliste ...
 
 Name                               | Beschreibung
 ---------------------------------- | -----------------------------------------------------------------
 Eigene Senderliste                 | Optionale Senderliste nur für diesen Lautsprecher (Name, Stream-URL, Icon-URL). Leer lassen, um die globale Liste der Bridge zu verwenden.
+
+> ⚙️ Erweiterte Einstellungen ...
+
+Name                               | Beschreibung
+---------------------------------- | -----------------------------------------------------------------
+Nicht erreichbar als Fehler melden | Aktiviert (Standard): ein nicht erreichbarer Lautsprecher wird als Fehler (201) gemeldet. Deaktiviert: Status inaktiv (104), kein Fehler, z.B. für absichtlich vom Strom getrennte Lautsprecher
+Anzeige bei Stopp/Pause            | _Geladene Quelle weiter anzeigen_ (Standard, wie die Sonos-App: man sieht, was beim nächsten Play startet), _Bei Stopp zurücksetzen_ oder _Bei Stopp und Pause zurücksetzen_ (Interpret, Titel und Album leer, keine Markierung in der Senderliste, Platzhalterbild als Cover)
 
 _Aktionsbereich:_
 
@@ -140,6 +147,12 @@ RequestAction(IPS_GetObjectIDByIdent('Playlist', 12345), 'NDR 2');
 Der Senderwechsel funktioniert genauso über die Aktion _Auf Wert schalten_ (z. B. in Ablaufplänen oder Ereignissen) mit der Variable _Sender_ und dem Sendernamen oder der Nummer als Wert.
 
 ### 9. Versionshistorie
+
+v1.8.20261127
+
+* _NEU_: Option _Anzeige bei Stopp/Pause_ - Titelinformationen und Cover bei Stopp bzw. bei Stopp und Pause zurücksetzen (Standard: wie die Sonos-App weiter anzeigen)
+* _NEU_: Panel _Erweiterte Einstellungen_ im Konfigurationsformular, _Nicht erreichbar als Fehler melden_ dorthin verschoben
+* _FIX_: Ein dauerhaft ausgeschalteter Lautsprecher meldet sich nur noch einmalig als nicht erreichbar bei der Bridge (keine minütliche Neusuche mehr)
 
 v1.7.20261123
 

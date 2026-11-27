@@ -77,6 +77,10 @@ class SonosGroup extends IPSModuleStrict
         // e.g. for speakers that are intentionally disconnected from power.
         $this->RegisterPropertyBoolean('OfflineAsError', true);
 
+        // Display on Stop/Pause: 0 = keep showing the loaded source (like the Sonos app),
+        // 1 = reset on Stop, 2 = reset on Stop and Pause.
+        $this->RegisterPropertyInteger('ResetDisplay', self::RESET_DISPLAY_NEVER);
+
         // Optional group specific station list, empty = use the global list of SonosBridge
         $this->RegisterPropertyString('StationOverride', '[]');
 
